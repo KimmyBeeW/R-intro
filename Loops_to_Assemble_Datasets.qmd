@@ -1,0 +1,350 @@
+Loops to Assemble Datasets
+
+Recap of last lecture
+- Functions
+- Structure
+- Difference between ifelse and if
+- Repeating code chunks for for loops
+
+Outline
+- Using for loop to assemble component datasets
+- bind_rows to stack rows
+- join to add columns
+
+
+NFL in UT
+Goal: Advise FOX13 in week-to-week selection from slate of FOX broadcasts
+Utah is the #29 TV market and 8th largest without an NFL team
+NFL on FOX (primarily NFC)
+America’s Game of the Week (6 weeks, often include Eagles & Cowboys)
+One game will get the FOX lead broadcast team (2023: Kevin Burkhardt, Greg Olsen, Erin Andrews, Tom Rinaldi) and the assumption is that Utah would get that game
+
+This only reads the first sheet
+```{r}
+library(tidyverse)
+library(readxl)
+
+try1 <- read_excel("NFLinUT.xlsx")
+```
+# A tibble: 11 × 8
+   date                time                network `home team`        
+   <dttm>              <dttm>              <chr>   <chr>              
+ 1 2003-01-04 00:00:00 1899-12-31 14:45:00 ABC     New York Jets      
+ 2 2003-01-04 00:00:00 1899-12-31 18:00:00 ABC     Green Bay Packers  
+ 3 2003-01-05 00:00:00 1899-12-31 14:45:00 FOX     San Francisco 49ers
+ 4 2003-01-05 00:00:00 1899-12-31 11:00:00 CBS     Pittsburgh Steelers
+ 5 2003-01-11 00:00:00 1899-12-31 18:15:00 FOX     Philadelphia Eagles
+ 6 2003-01-11 00:00:00 1899-12-31 14:30:00 CBS     Tennessee Titans   
+ 7 2003-01-12 00:00:00 1899-12-31 11:00:00 FOX     Tampa Bay Buccanee…
+ 8 2003-01-12 00:00:00 1899-12-31 14:45:00 CBS     Oakland Raiders    
+ 9 2003-01-19 00:00:00 1899-12-31 13:15:00 FOX     Philadelphia Eagles
+10 2003-01-19 00:00:00 1899-12-31 16:45:00 CBS     Oakland Raiders    
+11 2003-01-26 00:00:00 1899-12-31 16:30:00 ABC     Tampa Bay Buccanee…
+# ℹ 4 more variables: `visiting team` <chr>, Audience <dbl>,
+#   line <lgl>, ou <lgl>
+What went wrong? Should have a thousand observations!
+Only read first Sheet !
+
+
+Get the 2006 Sheet
+```{r}
+try2006 <- read_excel("NFLinUT.xlsx", sheet = "2006")
+try2006
+```
+# A tibble: 120 × 8
+  date                time                network `home team`        
+  <dttm>              <dttm>              <chr>   <chr>              
+1 2006-08-06 00:00:00 1899-12-31 18:00:00 NBC     Philadelphia Eagles
+2 2006-08-10 00:00:00 1899-12-31 18:00:00 FOX     St. Louis Rams     
+3 2006-08-11 00:00:00 1899-12-31 18:00:00 CBS     Atlanta Falcons    
+4 2006-08-13 00:00:00 1899-12-31 18:00:00 NBC     Cincinnati Bengals 
+5 2006-08-14 00:00:00 1899-12-31 18:00:00 ESPN    Minnesota Vikings  
+# ℹ 115 more rows
+# ℹ 4 more variables: `visiting team` <chr>, Audience <dbl>,
+#   line <dbl>, ou <dbl>
+
+Notice there is no season column (it’s inferred from the Sheet Name)
+Note: Also need to combine date and time into a single column, because the time in "date" is wrong, and the date in "time" is 1899, so definitely also wrong.
+
+2006 fixed
+```{r}
+try2006 <- read_excel("NFLinUT.xlsx", sheet = "2006")
+try2006 <- try2006 |>
+  mutate(season = 2006) |>
+  mutate(date = make_datetime(year = year(date), month = month(date), day = day(date),
+                              hour = hour(time), min = minute(time))) |>
+  select(!time) |>
+  select(season, date, everything())
+
+try2006
+```
+# A tibble: 120 × 8
+  season date                network `home team`       `visiting team`
+   <dbl> <dttm>              <chr>   <chr>             <chr>          
+1   2006 2006-08-06 18:00:00 NBC     Philadelphia Eag… Oakland Raiders
+2   2006 2006-08-10 18:00:00 FOX     St. Louis Rams    Indianapolis C…
+3   2006 2006-08-11 18:00:00 CBS     Atlanta Falcons   New England Pa…
+4   2006 2006-08-13 18:00:00 NBC     Cincinnati Benga… Washington Red…
+5   2006 2006-08-14 18:00:00 ESPN    Minnesota Vikings Oakland Raiders
+# ℹ 115 more rows
+# ℹ 3 more variables: Audience <dbl>, line <dbl>, ou <dbl>
+
+
+Loop over All Sheets
+Now that we have the code for any sheet we just need to write a for loop over Sheet Names
+How do we know the Sheet Names?
+```{r}
+sheet_names <- excel_sheets("NFLinUT.xlsx")
+sheet_names
+```
+ [1] "2002" "2003" "2004" "2005" "2006" "2007" "2008" "2009" "2010"
+[10] "2011" "2012"
+
+Notice the " (character data, not numeric data)
+
+
+Coding out loud: Loop over All Sheets
+Psuedo Code to create NFLinUT
+```
+for(i in sheet_names){
+  
+  Read in Sheet i
+  
+  Add Sheet i data at the bottom of NFLinUT
+  
+}
+```
+Once we have NFLinUT this will work, but what is NFLinUT the first time through the for loop?
+
+
+Loop over All Sheets to creat NFLinUT
+```{r}
+library(tidyverse)
+library(readxl)
+
+# initialize NFLinUT to be a thing, but empty
+NFLinUT <- NULL
+
+# get Sheet Names
+sheet_names <- excel_sheets("NFLinUT.xlsx")
+
+# loop over Sheets
+for(i in sheet_names){
+  # ith Sheet
+  this_sheet <- read_excel("NFLinUT.xlsx", sheet = i)
+  # address some data issues
+  this_sheet <- this_sheet |>
+    mutate(season = parse_number(i)) |>
+    mutate(date = make_datetime(year = year(date), month = month(date), day = day(date),
+                                hour = hour(time), min = minute(time))) |>
+    select(!time) |>
+    select(season, date, everything())
+  
+  # add this sheet to the bottom of NFLinUT
+  NFLinUT <- bind_rows(NFLinUT, this_sheet)
+}
+
+# create csv file for future work
+write_csv(NFLinUT, "NFLinUT.csv")
+```
+# A tibble: 1,249 × 8
+   season date                network `home team`      `visiting team`
+    <dbl> <dttm>              <chr>   <chr>            <chr>          
+ 1   2002 2003-01-04 14:45:00 ABC     New York Jets    Indianapolis C…
+ 2   2002 2003-01-04 18:00:00 ABC     Green Bay Packe… Atlanta Falcons
+ 3   2002 2003-01-05 14:45:00 FOX     San Francisco 4… New York Giants
+ 4   2002 2003-01-05 11:00:00 CBS     Pittsburgh Stee… Cleveland Brow…
+ 5   2002 2003-01-11 18:15:00 FOX     Philadelphia Ea… Atlanta Falcons
+ 6   2002 2003-01-11 14:30:00 CBS     Tennessee Titans Pittsburgh Ste…
+ 7   2002 2003-01-12 11:00:00 FOX     Tampa Bay Bucca… San Francisco …
+ 8   2002 2003-01-12 14:45:00 CBS     Oakland Raiders  New York Jets  
+ 9   2002 2003-01-19 13:15:00 FOX     Philadelphia Ea… Tampa Bay Bucc…
+10   2002 2003-01-19 16:45:00 CBS     Oakland Raiders  Tennessee Tita…
+11   2002 2003-01-26 16:30:00 ABC     Tampa Bay Bucca… Oakland Raiders
+12   2003 2003-08-02 18:00:00 ESPN    Tampa Bay Bucca… New York Jets  
+13   2003 2003-08-07 18:00:00 ESPN    New England Pat… New York Giants
+14   2003 2003-08-11 18:00:00 ESPN    New Orleans Sai… Philadelphia E…
+15   2003 2003-08-14 18:15:00 FOX     San Francisco 4… Oakland Raiders
+16   2003 2003-08-15 18:00:00 CBS     Cleveland Browns Green Bay Pack…
+17   2003 2003-08-16 18:00:00 ESPN    Tennessee Titans Buffalo Bills  
+18   2003 2003-08-17 18:00:00 ABC     St. Louis Rams   Tampa Bay Bucc…
+19   2003 2003-08-21 18:00:00 FOX     Pittsburgh Stee… Dallas Cowboys 
+20   2003 2003-08-22 18:00:00 CBS     Miami Dolphins   Atlanta Falcons
+# ℹ 1,229 more rows
+# ℹ 3 more variables: Audience <dbl>, line <dbl>, ou <dbl>
+
+Visualize the data
+```{r}
+ggplot(NFLinUT, aes(x = ou, y = Audience)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.6) +
+  scale_y_continuous(label = scales::comma,
+                     limits = c(0, 180000)) +
+  labs(x = "Expected Total Scoring (Over/Under Bet)",
+       y = "Utah TV audience",
+       title = "NFL broadcasts 2002-2012")
+```
+gets a dotplot with a smooth trend line
+
+Boxplots
+```{r}
+NFLinUT |>
+  mutate(network = factor(network, levels = c("FOX", "CBS", "ABC", "ESPN", "NBC", "NFLN"))) |>
+  ggplot(aes(x = network, y = Audience)) +
+    geom_boxplot() +
+    scale_y_continuous(label = scales::comma) +
+    labs(x = NULL,
+         y = "Utah TV audience",
+         title = "NFL broadcasts 2002-2012")
+```
+
+
+
+
+
+## Food Prices
+Each food item has their own economy / market
+
+Bananas are different from Potato Chips
+Grocery basket is the market
+
+All prices move up / down together
+
+
+Food Prices
+Chicken Drumsticks: https://fred.stlouisfed.org/series/APU0000706212
+Tomatoes: https://fred.stlouisfed.org/series/APU0000712311
+Bananas: https://fred.stlouisfed.org/series/APU0000711211
+Ice Cream: https://fred.stlouisfed.org/series/APU0000710411
+Potato Chips: https://fred.stlouisfed.org/series/APU0000718311
+
+URL / Links to FRED Data Downloads
+Need to Loop over all URLs
+```{r}
+fred_id <- c("APU0000706212", "APU0000712311", "APU0000711211",
+             "APU0000710411", "APU0000718311")
+paste0("https://fred.stlouisfed.org/graph/fredgraph.csv?id=",
+       fred_id)
+```
+
+Food Prices
+Psuedo Code to create prices
+```
+for(i in urls){
+  
+  Read in url
+  
+  Join prices with data from url
+  
+}
+```
+What does this do the first time in the loop? Doesn't work because it's joining to nothing
+```{r}
+prices |>
+  full_join(this_food)
+```
+
+
+Loop over All URLs to create prices
+
+```{r}
+library(tidyverse)
+
+# provide the `id` and name of each food
+fred_id <- c("APU0000706212", "APU0000712311", "APU0000711211",
+             "APU0000710411", "APU0000718311")
+fred_food <- c("chicken", "tomato", "banana", "icecream", "chips")
+
+# loop over foods
+for(i in 1 : 5){
+
+    # ith dataset
+    thisfoodcsv <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv?id=",
+                          fred_id[i])
+    thisfood <- read_csv(thisfoodcsv, na = ".")
+    names(thisfood)[2] <- fred_food[i]
+
+    # for the first dataset 
+    if(i == 1){
+        prices <- thisfood
+    }
+    # use join for all other datasets
+    else{
+        prices <- prices |>
+          full_join(thisfood, by = "DATE")
+    }
+    
+}
+
+# create csv file for future work
+write_csv(prices, "FoodPrices.csv")
+```
+```{r}
+FoodPrices <- read.csv('FoodPrices.csv')
+FoodPrices
+```
+
+```{r}
+library(GGally)
+ggpairs(prices) +
+      theme_bw()
+```
+
+Lecture Review
+- Using for loop to assemble component datasets
+- bind_rows to stack rows
+- join to add columns
+ 
+Appendix:
+- Full Analysis of NFL in UT
+- Full Analysis of Food Prices
+
+
+
+Food Prices
+Modeling - Unsupervised Learning - Principal Components Analysis
+- If you’re a whale shark approaching a krill swarm, to get as many krill as possible in the fewest number of passes, you’re going to want to rotate your face (@allison_horst)
+Notice the krill on the rotated shark axes have most variation horizontally (and a little vertically)
+Just rotate to catch the most fish.
+
+Food Prices
+Modeling - Unsupervised Learning - Principal Components Analysis
+- Imagine the 5 food prices in 5 dimensions
+- Rotate those dimensions in order of capturing the most variation
+- Reduce the number of dimensions (number of principal components)
+- Each dimension is a linear combination of the original columns, and the largest weights help us interpret the principal components
+
+Modeling
+```{r}
+# remove date and missing values
+prices1 <- prices |>
+  na.omit()
+prices1 <- prices1[ , -1]
+
+out <- prcomp(prices1, scale = TRUE)
+# scale = TRUE means we use correlations (not covariances)
+
+prices1
+```
+
+How many principal components?
+```{r}
+summary(out)
+```
+```{r}
+plot(out)
+```
+
+Principal components
+```{r}
+out$rotation
+```
+```{r}
+biplot(out, scale = 0)
+```
+
+Food Prices
+Communication
+PC1 is interpreted as they all go up or down together (CPI)
+
+PC2 is interpreted as a contrast between (chicken & chips) compared to tomato meaning when tomato goes up (down) then chicken & chips go down (up)

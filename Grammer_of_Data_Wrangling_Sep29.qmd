@@ -1,0 +1,220 @@
+Recap of last lecture
+  Tidy Data
+    Tidy Data Rules
+    Recognizing Untidy Data
+    What needs to be done to tidy it
+    
+Outline
+  Grammar of Data Wrangling
+    Rows
+    Columns
+  Pipe Operator
+  Base R Operations
+
+Church of Jesus Christ of Latter-day Saints Facts by Country
+Please go to Wikipedia page and explore the data
+https://en.wikipedia.org/wiki/Membership_statistics_of_the_Church_of_Jesus_Christ_of_Latter-day_Saints
+
+Church of Jesus Christ of Latter-day Saints Facts by Country
+Things you may have done:
+  Row Operations
+    Look at Country meaningful to you by name
+    Use Find <ctrl>F to search for rows
+  Column Operations
+    Look at how many Temples (ignoring other columns)
+  Sort / Arrange to find Most Wards
+
+Church of Jesus Christ of Latter-day Saints Facts by Country
+```{r}
+# A tibble: 187 × 13
+  Country             Area           TemplesOpen TemplesConst TemplesAnnounced Temples Missions Districts
+  <chr>               <chr>                <dbl>        <dbl>            <dbl>   <dbl>    <dbl>     <dbl>
+1 Albania             Europe Central           0            0                0       0        1         1
+2 American Samoa      Pacific                  0            1                0       1        0         0
+3 Andorra[c]          Europe Central           0            0                0       0        0         0
+4 Angola              Africa South             0            0                0       0        1         1
+5 Antigua and Barbuda Caribbean                0            0                0       0        0         0
+6 Argentina           SA South                 2            3                1       6       13        27
+7 Armenia             Europe East              0            0                0       0        1         1
+8 Aruba               Caribbean                0            0                0       0        0         1
+  Stakes Wards Branches Congregations   FHC
+   <dbl> <dbl>    <dbl>         <dbl> <dbl>
+1      1     6        8            14     4
+2      5    38        5            43     5
+3      0     0        1             1     0
+4      1     8       11            19     1
+5      0     0        1             1     1
+6     78   484      242           726   133
+7      0     0        5             5     4
+8      0     0        2             2     2
+# ℹ 179 more rows
+```
+
+
+Row Operations
+  10 or more Missions
+  Go row-by-row through the dataset and ask Missions >= 10
+  If TRUE then keep the row
+```{r}
+filter(ChurchFacts, TemplesConst > TemplesOpen)
+```
+
+Row Operations
+  More Temples Under Construction than Open
+  Go row-by-row through the dataset and ask TemplesConst > TemplesOpen
+  If TRUE then keep the row
+```{r}
+filter(ChurchFacts, TemplesConst > TemplesOpen)
+```
+
+Think With the Pipe Operator
+  In programming, a pipe is a technique for passing information from one process to another.
+  Advantage: Clearly expressing a sequence of multiple operations
+  Think about a sequence of actions:
+      Fill a pot with water
+      Bring water to a boil
+      Add pasta to boiling water
+
+      Pot |>
+        Add Water |>
+        Boil |>
+        Add Pasta
+
+Pipe Operator |>
+The following are equivalent:
+  filter(dataset, rule)
+Code Aloud: The filter function has two arguments. By default the first argument is the dataset name and the second is the rule you want to apply
+```{r}
+filter(ChurchFacts, TemplesConst > TemplesOpen)
+```
+
+  Pipe Operator
+Code Aloud: Take the dataset and “pipe it” to the filter function to apply the rule
+```{r}
+ChurchFacts |>
+  filter(TemplesConst > TemplesOpen)
+```
+
+*filter is for rows, select is for columns*
+
+Column Operations
+  Only Ward and Branch Columns
+  Go column-by-column through the dataset and ask column name Wards or Branches
+  If TRUE then keep the column
+```{r}
+ChurchFacts |>
+  select(Wards, Branches)
+```
+
+
+
+More Complex Data Wrangling
+
+Focusing only on Family History, what Countries don’t have a Family History Center?
+```{r}
+ChurchFacts |>
+  filter(FHC == 0) |>
+  select(Country)
+```
+
+filter with or | - (if one is true, it returns true)
+```{r}
+ChurchFacts |>
+  filter(Missions >= 12 | Temples >= 6) |>
+  select(Country, Missions, Temples, Stakes, Wards, Branches)
+```
+
+filter with and & - (both must be true to return true)
+```{r}
+ChurchFacts |>
+  filter(Missions >= 4 & Missions <= 6) |>
+  select(Country, Missions, Temples, Stakes, Wards, Branches)
+```
+
+and with multiple filter statements - (does the same thing as and &)
+```{r}
+ChurchFacts |>
+  filter(Missions >= 4) |>
+  filter(Missions <= 6) |>
+  select(Country, Missions, Temples, Stakes, Wards, Branches)
+```
+
+Most Missions - (arrange sorts the data)
+```{r}
+ChurchFacts |>
+  arrange(desc(Missions)) |>
+  select(Country, Missions, Temples, Wards, Branches, everything())
+```
+
+
+
+Looking at the dataset
+```{r}
+head(ChurchFacts)
+```
+
+```{r}
+tail(ChurchFacts)
+```
+
+```{r}
+slice_sample(ChurchFacts, n = 8)
+```
+Could use "View" but please don't
+
+
+
+Base R: Subsetting
+A dataset is a rectangle of entries
+data[ rows, columns]
+
+Select Rows
+```{r}
+ChurchFacts[c(4, 8, 20 : 26), ]
+```
+Select Columns
+```{r}
+ChurchFacts[, c(2, 6, 9 : 11)]
+```
+
+
+Base R: Row Operations
+10 or more Missions
+```{r}
+ChurchFacts[ChurchFacts$Missions >= 10, ]
+```
+
+Base R: Column Operations
+Only Ward and Branch Columns
+```{r}
+ChurchFacts[ ,c("Wards", "Branches")]
+```
+
+
+Lecture Review
+  Grammar of Data Wrangling
+    Rows (filter, arrange)
+    Columns (select)
+  Pipe Operator
+  Base R Subsetting data[ , ]
+
+Appendix:
+  SQL code
+  Python code
+
+SQL: Row and Column Operations
+```{SQL}
+SELECT 
+  Country, 
+  Missions,
+  Temples
+FROM
+  ChurchFacts
+WHERE
+  Missions >= 12
+```
+
+Python: Row and Column Operations
+```{python}
+ChurchFacts.loc[ChurchFacts['Missions'] >= 10, ["Country", "Missions", "Temples"]]
+```

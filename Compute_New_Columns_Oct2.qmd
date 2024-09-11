@@ -1,0 +1,178 @@
+Recap of last lecture
+  Grammar of Data Wrangling
+    Rows (filter, arrange)
+    Columns (select)
+  Pipe Operator  |>
+  Base R Subsetting data[ , ]
+
+Outline
+  Compute New Columns
+    tidyverse
+    Base R
+  Stock Returns Forecast (Your Turn!)
+  
+Stocks
+  The Walt Disney Company
+  https://finance.yahoo.com/quote/DIS/
+
+
+Historical Daily Closing Stock Price
+```{r}
+library(tidyverse)
+
+DIS <- read_csv("https://query1.finance.yahoo.com/v7/finance/download/DIS?period1=-252374400&period2=9999999999&interval=1d&events=history&includeAdjustedClose=true")
+
+tail(DIS, 12)
+```
+
+Historical Stock Price
+```{r}
+DIS |>
+  ggplot(aes(x = Date, y = Close)) +
+      geom_line() +
+      labs(
+        x = NULL, y = "Closing Stock Price",
+        title = "The Walt Disney Company (DIS)",
+        caption = "\nfinance.yahoo.com"
+      ) +
+      scale_y_continuous(labels = scales::dollar) +
+      theme_minimal()
+```
+ 
+Last Year’s Historical Stock Price
+```{r}
+DIS |>
+  ggplot(aes(x = Date, y = Close)) +
+      geom_line() +
+      labs(
+        x = NULL, y = "Closing Stock Price",
+        title = "The Walt Disney Company (DIS)",
+        caption = "\nfinance.yahoo.com"
+      ) +
+      scale_y_continuous(limits = c(75, 125), labels = scales::dollar) +
+      scale_x_date(limits = c(today() - years(1), NA)) +
+      theme_minimal()
+```
+
+Stock Return
+  Stock price isn’t how we should be looking at this
+  Instead, view it as an investment with a return (like the interest rate on savings)
+  Daily Continuously Compounded Return (log Return)
+      Rt = ln(Pt/(Pt-1))       #Take today's price and divide it by yesterday's price
+  Our dataset needs a new column computed from existing columns
+
+Mutate
+```{r}
+DIS <- DIS |>
+  mutate(logreturn = log(Close / lag(Close)) )
+
+tail(DIS)
+#Notice the new column logreturn
+```
+
+What did it do with the first row? NA
+```{r}
+head(DIS, 3)
+```
+
+
+Base R: $
+```{r}
+DIS$logreturn <- log(DIS$Close / lag(DIS$Close))
+
+tail(DIS)
+```
+
+
+Stock Return (All Data)
+Summary Stats
+```{r}
+summary(DIS$logreturn)
+```
+
+Distribution
+```{r}
+DIS |>
+  ggplot(aes(x = logreturn)) +
+      geom_density() +
+      scale_x_continuous(labels = scales::percent)
+```
+
+Over Time
+```{r}
+DIS |>
+  ggplot(aes(x = Date, y = logreturn)) +
+      geom_line() +
+      labs(
+        x = NULL, y = "Log Return",
+        title = "The Walt Disney Company (DIS)",
+        caption = "\nfinance.yahoo.com"
+      ) +
+      scale_y_continuous(labels = scales::percent) +
+      theme_minimal()
+```
+
+Stock Return (2019 - present)
+Summary Stats
+```{r}
+DIS |>
+  filter(Date >= ymd("2019-1-1")) |>
+  select(logreturn) |>
+  summary()
+```
+Distribution
+```{r}
+DIS |>
+  filter(Date >= ymd("2019-1-1")) |>
+  ggplot(aes(x = logreturn)) +
+      geom_density() +
+      scale_x_continuous(labels = scales::percent)
+```
+
+Normal?
+```{r}
+DIS |>
+  filter(Date >= ymd("2019-1-1")) |>
+  ggplot(aes(sample = logreturn)) +
+      geom_qq() +
+      geom_qq_line()
+```
+
+
+
+
+Generalized AutoRegressive Conditional Heteroskedasticity (non-constant variance) Model
+GARCH Model
+  Time Series Model for Mean
+  Time Series Model for Variance
+  
+Applying the Statistics / DS Project Cycle
+Import --> Tidy --> (^Transform --> Visualize --> Model -->v) --> Communicate
+
+
+
+Open: Wrangling3YourTurn.qmd
+
+
+Lecture Review
+  Computing New Columns
+    tidyverse (mutate)
+    Base R ($)
+  Appendix:
+
+SQL code:
+SQL: New Column from Existing Columns
+```{SQL}
+alter table DIS
+  add logreturn as float;
+update DIS
+  set logreturn = log(Close / lag(Close));
+```
+
+
+Python code:
+Python: New Column from Existing Columns
+```{Python}
+DIS["logreturn"] = log(DIS["Close"] / DIS["Close"].shift(1))
+```
+

@@ -1,0 +1,335 @@
+## Working With Multiple Datasets
+Recap of last lecture
+  Information in Multiple Datasets (Relational Databases)
+  Keys
+  Joins
+  
+Outline
+  Information in Multiple Datasets
+  Stacking Datasets
+  Case Study: UCLA Cancer Patients
+  
+Goal
+  We have multiple datasets
+  want to bring them together
+  
+BYU Football TV Audience
+  1984 National Champions
+  Why does BYU play football?
+      A way for Alumn to connect with current students
+      Missionary opportunity
+      BYU brand
+  Each Year BYU plays multiple games
+  Each year’s data is in a separate dataset
+
+Libraries
+```{r}
+library(tidyverse)
+```
+
+
+BYU 2022
+```{r}
+BYU2022 <- read_csv("
+Opponent, TVaud, Where, Network, When
+South Florida, NA, Away, ESPNU, Saturday
+Baylor, 2370, Home, ESPN, Saturday
+Oregon, 2580, Away, FOX, Saturday
+Wyoming, 609, Home, ESPN2, Saturday
+Utah State, 1260, Home, ESPN, Thursday
+Notre Dame, 2530, Neutral, NBC, Saturday
+Arkansas, 1060, Home, ESPN, Saturday
+Liberty, NA, Away, ESPNU, Saturday
+East Carolina, 823, Home, ESPN2, Friday
+Boise State, 281, Away, FS2, Saturday
+Utah Tech, NA, Home, BYUtv, Saturday
+Stanford, 453, Away, FS1, Saturday
+SMU, 2040, Neutral, ABC, Saturday
+")
+BYU2022
+```
+
+BYU 2021
+```{r}
+BYU2021 <- read_csv("
+Opponent, TVaud, Where, Network
+Arizona, 933, Neutral, ESPN
+Utah, 1503, Home, ESPN
+Arizona State, 1498, Home, ESPN
+South Florida, 491, Home, ESPN2
+Utah State, NA, Away, CBSSN
+Boise State, 2244, Home, ABC
+Baylor, 1440, Away, ESPN
+Washington State, 466, Away, FS1
+Virginia, 678, Home, ESPN2
+Idaho State, NA, Home, BYUtv
+Georgia Southern, NA, Away, ESPN+
+USC, 1458, Away, ESPN
+UAB, 3221, Neutral, ABC
+")
+BYU2021
+```
+
+BYU 2020
+```{r}
+BYU2020 <- read_csv("
+Opponent, TVaud, Where, Network
+Navy, 1150, Away, ESPN
+Troy, 795, Home, ESPN
+Louisiana Tech, 505, Home, ESPN2
+UTSA, 317, Home, ESPN2
+Houston, 1160, Away, ESPN
+Texas State, 716, Home, ESPN
+Western Kentucky, 788, Home, ESPN
+Boise State, 680, Away, FS1
+North Alabama, NA, Home, BYUtv
+Coastal Carolina, 1210, Away, ESPNU
+San Diego State, 606, Home, ESPN2
+UCF, 1550, Neutral, ESPN
+")
+BYU2020
+```
+
+bind_rows()
+```{r}
+BYU <- bind_rows(BYU2022, BYU2021, BYU2020)
+slice_sample(BYU, n = 4)
+```
+
+BaseR rbind()
+```{r}
+BYU1 <- rbind(BYU2021, BYU2020)
+slice_sample(BYU1, n = 4)
+```
+
+Base R rbind() --> error caused when more columns in data set than another data set
+```{r}
+rbind(BYU2022, BYU2021, BYU2020)
+```
+
+bind_rows() Details
+```{r}
+BYU <- bind_rows(BYU2022, BYU2021, BYU2020)
+slice_sample(BYU, n = 4)
+```
+What happened to Year ?
+It was never a column (it was in the name)
+
+```{r}
+BYU <- bind_rows(BYU2022, BYU2021, BYU2020, .id = "Year")
+print(BYU, n = 38)
+```
+
+A few ways to fix this
+```{r}
+BYU <- bind_rows(BYU2022, BYU2021, BYU2020, .id = "Year") |>
+  mutate(Year = case_when(Year == 1 ~ 2022,
+                          Year == 2 ~ 2021,
+                          Year == 3 ~ 2020))
+print(BYU, n = 38)
+```
+```{r}
+BYU <- bind_rows("2022" = BYU2022,
+                 "2021" = BYU2021,
+                 "2020" = BYU2020, .id = "Year") |>
+  mutate(Year = parse_number(Year))
+print(BYU, n = 38)
+```
+
+
+## Visualize
+Boxplot
+```{r}
+BYU |>
+  mutate(Where = factor(Where, levels = c("Home", "Away", "Neutral"))) |>
+  ggplot(aes(x = Where, y = TVaud)) +
+    geom_boxplot(color="black", fill="#0062BB") +
+    labs(
+      x = NULL,
+      y = "Viewers (1,000s)",
+      title = "BYU Football TV Audience"
+    ) +
+    theme_minimal()
+```
+
+Line
+```{r}
+BYU |>
+  group_by(Year) |>
+  summarize(Total = sum(TVaud, na.rm = TRUE) / 10^3) |>
+  ggplot(aes(x = Year, y = Total)) +
+    geom_line(linewidth = 3, color="#0062BB") +
+    geom_point(shape = 21, size = 5, stroke = 5, color="#0062BB", fill = "white") +
+    scale_x_continuous(breaks = 2020 : 2022) +  
+    labs(
+      x = NULL,
+      y = "Season Total Viewers (million)",
+      title = "BYU Football TV Audience"
+    ) +
+    theme_minimal()
+```
+
+
+
+
+
+
+
+
+## Case Study: UCLA 
+## Cancer Patient Data
+Case Study: UCLA Cancer Patient Data
+Data Available:
+  Patient Data from UC Hospitals
+  Patient Data from Cedars-Sinai Hospital
+  Doctor Data
+Desired Dataset:
+  First Stack Patient Data from Different Hospitals
+  Join Doctor Data to Patient Data
+
+# Import
+UC Patients
+```{r}
+uc <- read_csv("https://stats.idre.ucla.edu/stat/data/rdm/patient_pt1_dm.csv")
+
+slice_sample(uc, n = 10)
+```
+
+Cedars-Sinai Patients
+```{r}
+cs <- read_csv("https://stats.idre.ucla.edu/stat/data/rdm/patient_pt2_dm.csv")
+
+slice_sample(cs, n = 10)
+```
+
+Doctors
+```{r}
+doc <- read_csv("https://stats.idre.ucla.edu/stat/data/rdm/doctor_dm.csv")
+
+doc
+```
+
+# Transform (to make Tidy)
+Patient Data joined with Doctor Data
+```{r}
+cancer <- uc |>
+  bind_rows(cs) |>
+  inner_join(doc)
+
+slice_sample(cancer, n = 10)
+```
+
+Choosing a Doctor is Hard
+  Want Old (seen and practiced so much) or Young (current training) ?
+  Response variable: experience
+  Cancer characteristics: tumorsize, ntumors, cancerstage
+  Patient characteristics: age, sex, mobility
+  Doctor characteristics: medicaid, lawsuits
+  
+#Visualize
+Tumor size
+```{r}
+ggplot(cancer, aes(x = tumorsize, y = experience)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Number of tumors
+```{r}
+ggplot(cancer, aes(x = ntumors, y = experience)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Cancer stage
+```{r}
+ggplot(cancer, aes(x = cancerstage, y = experience)) +
+  geom_boxplot()
+```
+
+Age (WRONG)
+```{r}
+ggplot(cancer, aes(x = age, y = experience)) +
+  geom_point() +
+  geom_smooth()
+```
+Age (no outliers)
+```{r}
+cancer |>
+  filter(age < 100) |>
+  ggplot(aes(x = age, y = experience)) +
+    geom_point() +
+    geom_smooth()
+```
+
+Sex (WRONG)
+```{r}
+ggplot(cancer, aes(x = sex, y = experience)) +
+  geom_boxplot()
+```
+Sex (no outliers)
+```{r}
+cancer |>
+  filter(sex %in% c("female", "male")) |>
+  ggplot(aes(x = sex, y = experience)) +
+    geom_boxplot()
+```
+
+Mobility
+```{r}
+ggplot(cancer, aes(x = mobility, y = experience)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Medicaid
+```{r}
+ggplot(cancer, aes(x = medicaid, y = experience)) +
+  geom_point() +
+  geom_smooth()
+```
+
+lawsuits
+```{r}
+ggplot(cancer, aes(x = factor(lawsuits), y = experience)) +
+  geom_boxplot()
+```
+
+
+
+# Transform
+```{r}
+cancer1 <- cancer |>
+  filter(age < 100) |>
+  filter(sex %in% c("female", "male")) |>
+  mutate(cancerstage = factor(cancerstage)) |>
+  mutate(cancerstage = relevel(cancerstage, ref = "IV")) |>
+  mutate(nolawsuits = ifelse(lawsuits == 0, TRUE, FALSE)) |>
+  select(experience,
+         tumorsize, ntumors, cancerstage, age, sex, mobility, 
+          medicaid, nolawsuits)
+cancer1
+```
+
+
+#Model
+```{r}
+out <- lm(experience ~ ., data = cancer1)
+
+summary(out)
+```
+
+
+Case Study: UCLA Cancer Patient Data
+Communicate
+  - Higher mobility scores have more experienced doctors.
+  - Doctors who haven’t had lawsuits haven’t practiced long (pvalue < 0.0001). 
+      One interpretation is that lawsuits are part of a doctor’s career.
+  - Experienced doctors have more Medicaid patients in their practice.
+  - More experienced doctors have patients with larger and more tumors, 
+      earlier stage cancers, and older patients (pvalues near 0.05).
+
+Lecture Review
+  Information in Multiple Datasets
+  Stacking Datasets
+  Case Study

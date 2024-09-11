@@ -1,0 +1,342 @@
+Recap of previous lecture
+  Multivariate data analysis
+    color to identify another variable
+    faceting
+    table of summary statistics
+
+Data over time (Time Series Plot)
+A single variable measured at regular time intervals
+
+Data: Egg Prices
+  google FRED Egg Prices
+  https://fred.stlouisfed.org/series/APU0000708111
+  Monthly Egg Price (Grade A Large)
+  Cost per Dozen in US City Average
+```{r}
+library(tidyverse)
+library(scales)
+
+eggs <- read_csv("https://fred.stlouisfed.org/graph/fredgraph.csv?id=APU0000708111")
+
+# choose a better column name than FRED id
+eggs <- eggs |>
+  rename(EggPrice = APU0000708111)
+
+# look at data
+tail(eggs, 12)
+```
+
+Time Series Plot
+```{r}
+ggplot(eggs, aes(x = DATE, y = EggPrice)) +
+    geom_line() 
+```
+
+Customized Time Series Plot
+```{r}
+ggplot(eggs, aes(x = DATE, y = EggPrice)) +
+    geom_line() +
+    labs(
+      x = NULL, y = NULL,
+      title = "Monthly Egg Price",
+      caption = "FRED"
+    ) +
+    scale_y_continuous(labels = label_dollar()) +
+    theme_minimal()
+```
+
+Dates --> Dates and times are as tricky in R as they were in preschool
+      7 days in a week
+      12 months in a year
+      30 days in a month (except when it’s 31, or 28, or 29)
+      24 hours in a day (unless flying to NY that day)
+  Base R uses POSIXlt (seconds since January 1, 1970)
+  tidyverse includes lubridate package with objects and functions to make working with dates easier
+
+
+lubridate basics:
+
+date data type
+```{r}
+today()
+```
+
+date-time data type
+```{r}
+now()
+```
+
+One year ago
+```{r}
+today() - years(1)
+```
+
+One month ago
+```{r}
+today() - months(1)
+```
+
+Four weeks ago
+```{r}
+today() - weeks(4)
+```
+
+
+Customized Time Series Plot
+```{r}
+ggplot(eggs, aes(x = DATE, y = EggPrice)) +
+    geom_line() +
+    labs(
+      x = NULL, y = NULL,
+      title = "Monthly Egg Price",
+      caption = "FRED"
+    ) +
+    scale_y_continuous(labels = label_dollar()) +
+    scale_x_date(limits = c(today() - years(3), today())) +
+    theme_minimal()
+```
+
+lubridate basics:
+Specifying a date
+```{r}
+ymd("2023-11-23")
+```
+```{r}
+ymd("20231123")
+```
+```{r}
+ymd("2023/11/23")
+```
+```{r}
+ymd("2023-11-23")
+```
+
+Other conventions
+```{r}
+mdy("11/23/2023")
+```
+```{r}
+dmy("23 Nov 2023")
+```
+
+
+Customized Time Series Plot
+```{r}
+ggplot(eggs, aes(x = DATE, y = EggPrice)) +
+    geom_line() +
+    labs(
+      x = NULL, y = NULL,
+      title = "Monthly Egg Price",
+      caption = "FRED"
+    ) +
+    scale_y_continuous(labels = label_dollar()) +
+    scale_x_date(limits = c(today() - years(3), today())) +
+    geom_vline(xintercept = mdy("Apr 9, 2023"), linetype="dotted") +
+    annotate(
+      geom = "label", x = mdy("Apr 9, 2023"), y = 1,
+      label = "Easter 2023") + 
+    theme_minimal()
+```
+
+
+Base R
+```{r}
+ts.plot(eggs$EggPrice)
+```
+
+Data types in R - how the memory is going to be stored (least to greatest)
+    logical - true or false (1 bits)
+    double - #.##### (32 bits)
+    integer - small numerical (8 bits)
+    character - letters, numbers, special characters
+    data frames, tibbles, and lists (oh my!)
+    
+Logical & character
+logical - boolean values TRUE and FALSE
+```{r}
+typeof(TRUE)
+```
+character - character strings
+```{r}
+typeof("hello")
+```
+
+Double & integer
+double - floating point numerical values (default numerical type)
+```{r}
+typeof(1.335)
+```
+```{r}
+typeof(7)
+```
+integer - integer numerical values (indicated with an L)
+```{r}
+typeof(7L)
+```
+```{r}
+typeof(1 : 3)
+```
+
+
+Concatenation
+Vectors can be constructed using the c() function.
+```{r}
+c(1, 2, 3)
+```
+
+```{r}
+c("Hello", "World!")
+```
+
+```{r}
+c(c("hi", "hello"), c("bye", "jello"))
+```
+
+
+Converting between types
+with intension...
+```{r}
+x <- 1 : 3
+x
+typeof(x)
+```
+```{r}
+y <- as.character(x)
+y
+typeof(y)
+```
+
+```{r}
+x <- c(TRUE, FALSE)
+x
+typeof(x)
+```
+```{r}
+y <- as.numeric(x)
+y
+typeof(y)
+```
+
+without intention…
+R will happily convert between various types without complaint when different 
+types of data are concatenated in a vector, and that’s not always a great thing!
+```{r}
+c(1, "Hello")
+c(FALSE, 3L)
+c(1.2, 3L)
+c(2L, "two")
+```
+Explicit vs. implicit coercion:
+  Explicit coercion is when you call a function like as.logical(), as.numeric(), 
+    as.integer(), as.double(), or as.character()
+  Implicit coercion happens when you use a vector in a specific context that 
+    expects a certain type of vector
+
+
+Data Frames and Tibbles
+Because of the coercion to make everything the same data type, Base R has another structure that can combine objects of different data types
+```{r}
+eggs
+```
+
+```{r}
+typeof(eggs)
+```
+
+Data Frame / Tibble is a special case (class) where every column has the same number of rows, and each column is a single data type
+```{r}
+class(eggs)
+```
+Note: While it looks like a matrix (rows and columns), a matrix must be all numerical
+
+
+Lecture Review - Visualizing data over time
+Dates
+Data Types
+
+Appendix:
+  Other Material in R4DS (2e) Chapters 2, 10, 12
+  Special Data Types
+
+R4DS (2e) Chapters 2, 10, 12
+  What do you think is interesting? How would you use it?
+  Sec 10.7 Coordinate Systems
+  
+Maps
+```{r}
+library(maps)
+
+USstates <- map_data("state")
+
+ggplot(USstates, aes(x = long, y = lat, group = group)) +
+  geom_polygon(color = "black", fill = "lightblue")
+```
+```{r}
+USstates <- map_data("state")
+
+ggplot(USstates, aes(x = long, y = lat, group = group)) +
+  geom_polygon(color = "black", fill = "lightblue") + 
+  coord_quickmap() +
+  theme_void()
+```
+
+Special values
+NA: Not available
+NaN: Not a number
+Inf: Positive infinity
+-Inf: Negative infinity
+```{r}
+pi / 0
+0/0
+1/0 - 1/0
+1/0 + 1/0
+```
+
+NAs are wild!
+```{r}
+x <- c(1, 2, 3, 4, NA)
+mean(x)
+```
+```{r}
+mean(x, na.rm = TRUE)
+summary(x)
+```
+
+NAs are logical
+R uses NA to represent missing values in its data structures.
+```{r}
+typeof(NA)
+```
+
+Mental model for NAs
+  - Unlike NaN, NAs are genuinely unknown values
+  - But that doesn’t mean they can’t function in a logical way
+  - Let’s think about why NAs are logical…
+Why do the following give different answers?
+```{r}
+# TRUE or NA
+TRUE | NA
+```
+```{r}
+# FALSE or NA
+FALSE | NA
+```
+
+NA is unknown, so it could be TRUE or FALSE
+TRUE | NA
+```{r}
+TRUE | TRUE  # if NA was TRUE
+TRUE | FALSE # if NA was FALSE
+```
+since both give TRUE, the ans is TRUE
+
+FALSE | NA
+```{r}
+FALSE | TRUE  # if NA was TRUE
+FALSE | FALSE # if NA was FALSE
+```
+since neither give the same, the ans is NA
+
+Doesn’t make sense for mathematical operations
+Makes sense in the context of missing data
+

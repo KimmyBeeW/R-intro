@@ -1,0 +1,206 @@
+## Transform / Feature Engineering: Quantitative Data
+
+Recap of last few lectures
+  Row Operations (filter, [ , ])
+  Column Operations (select, mutate,$)
+
+Outline
+  Dividing a dataset into groups and performing computations on group chunks
+  
+Example:
+Estimating 50 year Flood
+  P(Max > x) = 0.02 = 1/50 = or probability of once every 50 yrs
+  Goal is to predict the peak of a river for flood planning
+  Imagine building a bridge over a river. How high does it need to be?
+  Coal Creek, Cedar City UT
+  
+#Import:
+```{r}
+library(tidyverse)
+
+bigdata <- read_table("https://nwis.waterservices.usgs.gov/nwis/iv/?sites=10242000&parameterCd=00065&startDT=2000-01-01T00:00:00.000-06:00&endDT=2026-12-31T23:59:59.999-06:00&siteStatus=all&format=rdb",
+                      col_names = c("label1", "label2", "Date", "Time", "tz", "Height", "label3"),
+                      skip = 32) |>
+  mutate(Date = ymd_hms(paste(Date, Time), tz = "America/Denver")) |>
+  select(Date, Height)
+```
+
+#Tidy:
+```{r}
+tail(bigdata)
+```
+
+USGS has sensors that measures the Gage Height (ft) every 5 minutes!
+Cool they do that, but we don’t need that level of detail because it only floods once a year at snowfall runoff
+
+
+#Transform:
+We want the peak (max) for each year
+
+# group_by and summarize
+Use group_by to divide the dataset into groups meaningful for the analysis
+  - group_by doesn’t change the data (it’s a new feature of the dataset that changes the behavior of subsequent data verbs)
+Use summarize to compute
+  - mutate computes using each row of an existing column (no change to number of rows)
+  - summarize computes across several rows and reduces the dataset
+```{r}
+peak <- bigdata |>
+  mutate(Year = year(Date)) |>
+  group_by(Year) |>
+  summarize(
+    Max_Height = max(Height)
+  )
+
+peak
+```
+
+# Programming Thinking
+For Loop
+```{SQL}
+FOR each value of YEAR
+
+  FILTER dataset to observations of YEAR
+  
+  COMPUTE max(Height) for filtered dataset
+  
+END
+```
+
+#Visualize: Estimating 50 year Flood
+```{r}
+ggplot(peak, aes(x = Max_Height)) +
+  geom_density(adjust = 1.8, bounds = c(0, Inf)) +
+  xlim(0, 20) +
+  labs(x = "Annual Max Gage Height (ft)",
+       y = "Density",
+       title = "Coal Creek, Cedar City UT")
+```
+
+#Model
+Probability Models for Max (Gumbel, Weibull, Frechet, Gen Extreme Value)
+```{r}
+library(EnvStats)
+
+# mle of GEV
+out <- egevd(peak$Max_Height)
+out
+```
+```{r}
+# estimated quantile Q(0.98) for 50-year flood
+qgevd(0.98, location = out$parameters[1], scale = out$parameters[2], shape = out$parameters[3])
+```
+The highest it'll get during the 50 yr flood is 29ft ~ ish
+
+#Communicate
+```{r}
+x <- seq(0, 30, length = 300)
+fx <- dgevd(x, location = out$parameters[1], scale = out$parameters[2], shape = out$parameters[3])
+plot(x, fx, type = "l", xlab = "Coal Creek Height (ft)", ylab = "Density")
+abline(v = qgevd(0.98, location = out$parameters[1], scale = out$parameters[2], shape = out$parameters[3]), col = "royalblue", lwd = 3)
+points(peak$Max_Height, rep(0, length(peak$Max_Height)), cex = 2)
+text(28, 0.20, "50 year flood", adj = 1, col = "royalblue")
+```
+
+
+
+#Details of summarize
+summarize is similar to Base R functions
+```{r}
+sd(peak$Max_Height)
+```
+```{r}
+peak |>
+  summarize(StdDev = sd(Max_Height))
+```
+```{r}
+sd(peak$Max_Height)
+IQR(peak$Max_Height)
+```
+```{r}
+peak |>
+  summarize(
+    StdDev = sd(Max_Height),
+    IQR = IQR(Max_Height),
+    SampleSize = n()
+  )
+```
+
+
+#group_by
+```{r}
+peak <- bigdata |>
+  mutate(Year = year(Date)) |>
+  group_by(Year) |>
+  summarize(
+    Max_Height = max(Height)
+  )
+tail(peak)
+```
+
+#New ".by"
+```{r}
+peak <- bigdata |>
+  mutate(Year = year(Date)) |>
+  summarize(
+    Max_Height = max(Height),
+    .by = Year
+  )
+tail(peak)
+```
+
+
+#More with summarize and group_by / .by
+Table of Hydrology Summary Statistics by Year
+```{r}
+bigdata |>
+  mutate(Year = year(Date)) |>
+  summarize(
+    Min = min(Height),
+    P5 = quantile(Height, 0.05),
+    Q1 = quantile(Height, 0.25),
+    Median = quantile(Height, 0.50),
+    Q3 = quantile(Height, 0.75),
+    P95 = quantile(Height, 0.95),
+    Max = max(Height),
+    .by = Year
+  )
+```
+
+
+#Lecture Review
+Dividing a dataset into groups and performing computations on group chunks
+summarize and group_by / .by
+  Appendix: Quantiles
+  
+#Random Variables
+X is a random variable
+- pmf/pdf: p(x) = P(X = x) or f(x) represents probability as area under curve
+- Moments: E(X), V(X), mgf: m(t) = E(e^tX)
+- cdf: F(x) = P(X ≤ x) < - Cumulative Distribution Function
+    - What we call “percentiles” (My toddler is so tall! She is in the 90th percentile of height.)
+- quantile function:
+    - inverse of cdf
+    - given probability u, what is the value x such that P(X ≤ x) = u
+    - "What is the 90th percentile(P)? 40 inches(u)"
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

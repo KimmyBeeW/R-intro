@@ -1,0 +1,112 @@
+Recap of last lecture
+  Computing New Columns
+  tidyverse (mutate)
+  Base R ($)
+
+Analysis: Understanding Hotel Prices
+Hotel Pricing Demand
+Goal is to predict the price a consumer would purchase a hotel room
+  If offered price is too high, the hotel will lose revenue because the room goes unused.
+  If the offered price is too low, the consumer will pay for the room because they got a good deal but the hotel will have lost potential revenue because they could have charged a higher price and still got the booking.
+
+Open: Wrangling4YourTurn.qmd
+
+Tidy Tuesday: they upload a new, already tidy, data set every day.
+
+Import:
+```{r}
+library(tidyverse)
+
+hotel <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
+```
+
+
+Tidy:
+```{r}
+slice_sample(hotel, n = 10)
+# or A different view of the provided dataset
+glimpse(hotel)
+```
+
+Understand:
+pay less by staying longer?
+weekend stay costs more at City Hotel?
+
+Transform:
+Dataset is tall and wide. What are we focused on?
+  Room Cost
+  Focus on the City Hotel Property
+  Focus on the Bookings not cancelled
+  Do we have length of stay? How do we compute it?
+  Do we know which bookings include a weekend? How do we compute it?
+```{r}
+cityhotel <- hotel |>
+  filter(hotel == "City Hotel") |>
+  filter(is_canceled == 0) |>
+  mutate(stay = stays_in_weekend_nights + stays_in_week_nights,
+         weekend = ifelse(stays_in_weekend_nights > 1, "Weekend", "NotWeekend")) |>
+  select(adr, weekend, stay)
+```
+
+Dataset for analysis
+```{r}
+slice_sample(cityhotel, n = 15)
+```
+
+Visualize:
+Pay Less by Staying Longer?
+```{r}
+ggplot(cityhotel, aes(x = stay, y = adr)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "City Hotel")
+```
+```{r}
+cityhotel |>
+  filter(stay < 20) |>
+  filter(adr > 10) |>
+  ggplot(aes(x = stay, y = adr)) +
+    geom_jitter(size = 3, color = "tan", alpha = 0.2) +
+    geom_smooth(se = FALSE) +
+    scale_y_log10() +  
+      labs(title = "City Hotel",
+           y = "Ave Daily Rate ($)",
+           x = "Length of Stay (days)")
+```
+
+Weekend Stay Costs More?
+```{r}
+#This doesn't work
+ggplot(cityhotel, aes(x = adr, fill = weekend)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "City Hotel")
+```
+```{r}
+#This does
+ggplot(cityhotel, aes(x = weekend, y = adr)) +
+  geom_boxplot() +
+  labs(title = "City Hotel",
+       y = "Ave Daily Rate ($)",
+       x = NULL)
+```
+
+
+Transform:
+  Add some lines to the previous creation of cityhotel
+  Log transformation can’t have adr zero
+  additional columns
+```{r}
+cityhotel <- hotel |>
+  filter(hotel == "City Hotel") |>
+  filter(is_canceled == 0) |>
+  filter(adr > 10) |>
+  mutate(stay = stays_in_weekend_nights + stays_in_week_nights,
+         weekend = ifelse(stays_in_weekend_nights > 1, "Weekend", "NotWeekend")) |>
+  select(adr, weekend, stay, lead_time, is_repeated_guest, 
+         required_car_parking_spaces, total_of_special_requests)
+
+slice_sample(cityhotel, n = 15)
+```
+
+
+

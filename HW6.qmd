@@ -1,0 +1,193 @@
+---
+title: "HW6: Forecasting Zion National Park Visitors"
+author: Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+You are asked to predict the annual number of visitors to Zion National Park for the next five years so the Park Service can plan and prepare for the future using data from the US National Park Service.
+
+```{r}
+#| include: false
+# load packages
+library(tidyverse)
+library(astsa)
+```
+
+## IMPORT
+
+The US National Park Service collects an impressive amount of data on the number of visitors to our national parks. For this assignment use the National Park Service Visitor Use Statistics webpage at <https://irma.nps.gov/Stats/> for data from a selected national park.
+
+Choose `Zion NP (ZION)` in the [**Select a Park**]{style="background-color: Linen; color: SaddleBrown;"} pull down menu. Choose *Annual Park Recreation Visitation (1919-Last Calendar Year).* Download the data as a CSV file.
+
+Import data in an dataframe called `zion`.
+
+Note: the first row says "Title", second row has the park, third row is blank ... the 4th row has column names, so use the `skip` argument.
+
+**Note:** You will need to set `eval: true` when you have an answer you want to try out.
+
+```{r}
+#| eval: true
+zion <- read_csv("Annual_Park_Recreation_Visitation.csv",
+               # fourth row has column names
+                 skip = 3) 
+zion
+```
+
+## TIDY
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+```{r}
+#| eval: true
+tail(zion)
+```
+
+## TRANSFORM
+
+Code should
+
+-   Change the units of `RecreationVisitors` to "millions of visitors."
+
+-   Drop the column `TotalRecreationVisitors`
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+```{r}
+#| eval: true
+zion <- zion |>
+  mutate(RecreationVisitors = RecreationVisitors/1000000) |>
+  select(Year, RecreationVisitors)
+
+tail(zion)
+```
+
+## VISUALIZE
+
+Plot the time series for Zion NP Visitors since the park's creation (1919).
+
+**Note:** You will need to set `eval: true` when you have an answer you want to try out.
+
+```{r}
+#| eval: true
+ggplot(zion, aes(x = Year, y = RecreationVisitors)) +
+  geom_point(color = 'darkorange') +
+  geom_smooth(color = 'royalblue') +
+  labs(
+    title = "Zion NP Visitors since 1919",
+    x = "Year", 
+    y = "Zion NP Annual Visitors (in millions)",
+    caption = "Source: irma.nps.gov/Stats/",
+    subtitle = "A visual of the growth in visitor's since the park's creation"
+    ) +
+  theme_minimal()
+```
+
+Plot the time series for Zion NP Visitors since 1950.
+
+**Note:** You will need to set `eval: true` when you have an answer you want to try out.
+
+```{r}
+#| eval: true
+zion50 <- filter(zion, Year >= 1950)
+ggplot(zion50, aes(x = Year, y = RecreationVisitors)) +
+  geom_point(color = 'darkorange') +
+  geom_line(color = 'royalblue') +
+  scale_y_continuous() +
+  labs(
+    title = "Zion NP Visitors since 1950",
+    x = "Year", 
+    y = "Zion NP Annual Visitors (in millions)",
+    caption = "Source: irma.nps.gov/Stats/"
+    ) + 
+  theme_minimal()
+```
+
+## MODEL
+
+Consider a log-transformation to satisfy the ARIMA(1,1,1) model assumptions. Plot the time series for Zion NP Visitors since 1950 with the vertical axis `log(RecreationVisitors)`
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+**Note:** You will need to set `eval: true` when you have an answer you want to try out.
+
+```{r}
+#| eval: true
+ggplot(zion50, aes(x = Year, y = log(RecreationVisitors))) +
+  geom_point(color = 'darkorange') +
+  geom_line(color = 'royalblue') +
+  scale_y_continuous() +
+  labs(
+    title = "Log-transformation of Zion NP Visitors since 1950",
+    x = "Year", 
+    y = "log of Zion NP Annual Visitors (in millions)",
+    caption = "Source: irma.nps.gov/Stats/"
+    ) + 
+  theme_minimal()
+```
+
+Fit an ARIMA$(1, 1, 1)$ model and report the parameter estimates and standard errors.
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+```{r}
+#| eval: true
+
+# fit model and report parameter estimates and standard errors
+zion1950 <- zion |>
+  filter(Year > 1950) |>
+  mutate(lnVisitors = log(RecreationVisitors))
+
+zion1950_out <- sarima(zion1950$lnVisitors,1,1,1)
+zion1950_out$ttable
+```
+
+Forecast the annual visitors (in millions) for the next 5 years. Report a table of predictions and 95% prediction intervals.
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+```{r}
+#| eval: true
+
+# predict log-annual visitors for next 5 years
+zion1950_yhat <- sarima.for(zion1950$lnVisitors, n.ahead=5, 1,1,1)
+# notice the picture
+zion1950_yhat
+
+# compute 95% prediction intervals of log-annual visitors
+zion1950_yhat$L <- zion1950_yhat$pred - 2 * zion1950_yhat$se
+zion1950_yhat$U <- zion1950_yhat$pred + 2 * zion1950_yhat$se
+
+# table of un-transformed predictions for next 5 years
+cbind(2023 : 2027, exp(zion1950_yhat$pred), exp(zion1950_yhat$L), exp(zion1950_yhat$U))
+```
+
+## COMMUNICATE
+
+Where is Zion National Park? Why did you go or why do you want to?
+
+Zion National Park is a National Park in the southern part of Utah. It has a lot of beautiful hikes and land features. It's also rather warm which is really nice in the Spring and Fall seasons.
+
+Write a paragraph about the creation of the national park.
+
+The US department of the Interior says, "On November 19, 1919, President Woodrow Wilson signed a bill into law establishing Zion National Park." Zion is a word used in the scriptures to represent a place of spiritual sanctity. Utah has always valued the land it contains, and because it has been protected for the last century, we still get to enjoy those landscapes today. As the price of real estate increases, the value of undeveloped places of land also increases as shown by the steady increase in visitors over the last century.
+
+Did the pandemic impact visitation?
+
+You can see that there was a visible dip in attendance at the park in 2020, but the next year it pops right back up to surpass the smooth trend line. In other words, I believe that the initial panic of the pandemic in 2020 did impact visitation, but didn't stop visitors from coming the next year which saw a record high in 2021.
+
+Create a graphic showing the historical values and the 5 year predictions (with uncertainty) of annual visitors (in millions).
+
+**Note:** You will need to set `eval: true` when you have the dataset `zion` created in the step above.
+
+```{r}
+#| eval: true
+plot(RecreationVisitors ~ Year, data = zion, type = "b",
+     ylab = "Zion NP Annual Visitors (in millions)",
+     xlim = c(1990, 2028), ylim = c(1.95, 6.7))
+lines(2023 : 2027, exp(zion1950_yhat$pred), col = "darkorange2", type = "b", pch = 19)
+lines(2023 : 2027, exp(zion1950_yhat$L), col = "darkorange2", lty = 2)
+lines(2023 : 2027, exp(zion1950_yhat$U), col = "darkorange2", lty = 2)
+```

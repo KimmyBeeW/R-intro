@@ -1,0 +1,127 @@
+---
+title: "Mini-Project 1: Visualizing Star Wars Characters"
+author: Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+```{r}
+#| include: false
+# load packages
+library(tidyverse)
+data(starwars)
+```
+
+1.  Glimpse at the starwars data frame.
+
+```{r}
+glimpse(starwars)
+view(starwars)
+```
+
+2.  Modify the following plot to change the color of all points to `"pink"`.
+
+```{r}
+ggplot(starwars, 
+       aes(x = height, y = mass, size = birth_year)) +
+  geom_point(color = "pink")
+
+```
+
+3.  Add labels for title, x and y axes, and size of points.
+
+```{r}
+ggplot(starwars, 
+       aes(x = height, y = mass, color = gender, size = birth_year)) +
+  geom_point(color = "#30509C") +
+  labs(
+    title = "Mass over Height by Year",
+    x = "Height (cm)", 
+    y = "Mass (kg)",
+    size = "Birth Year"
+    )
+```
+
+4.  Pick a single numerical variable and make a histogram of it. Select a reasonable binwidth for it.
+
+```{r}
+#Height
+ggplot(starwars, aes(x=height)) +
+  geom_histogram(binwidth = 14,
+                 fill = "pink",
+                 color = "chocolate4")
+```
+
+5.  Pick a numerical variable and a categorical variable and make a visualization (you pick the type!) to explore the relationship between the two variables. Along with your code and output, provide an interpretation of the visualization.
+
+```{r}
+#Height and Eye Color
+ggplot(starwars, aes(x = height, fill = eye_color)) +
+  geom_density(adjust = 1,
+               alpha = .6) + 
+  scale_fill_manual(values = c("black","blue","lightblue2","chocolate4","gold","khaki","darkolivegreen","darkorange","pink","red","purple","wheat","white","gold1")) +
+  theme_minimal() +
+  labs( 
+    x = "Height (cm)", 
+    y = "Density",
+    fill = "Eye Color",
+    title = "Star Wars Character Height by Eye Color"
+  )
+```
+
+Most eye colors seem to be pretty evenly distributed from 66cm to 264cm with a slight density increase from around 175 to 200 cm likely because of the connection between eye color and species. Blue, brown, and hazel have a much more extreme distribution with most focused between 150 and 200 cm, Hazel being the most extreme centered at around 175cm. As for unusual observations, Hazel seems to be very heavily concentrated between 165 and 180 cm likely because all of the species that have hazel eyes are human or humanoid height.
+
+6.  Pick a single categorical variable from the data set and make a bar plot of its distribution.
+
+```{r}
+#Gender
+ggplot(starwars, aes(x = gender, fill = gender)) +
+  geom_bar(color = 'black', alpha = .75) +
+  scale_fill_manual(values = c("pink","blue","darkorchid")) +
+  labs(title = 'Gender Distribution of Star Wars Characters by Count',
+       x = 'Gender',
+       y = 'Count')
+
+```
+
+7.  Pick two categorical variables and make a visualization to visualize the relationship between the two variables. Along with your code and output, provide an interpretation of the visualization.
+
+```{r}
+#Eye Color and Gender
+ggplot(starwars, aes(x = gender, fill = eye_color)) +
+  geom_bar(alpha = 0.8) +
+  facet_wrap(~ eye_color) +
+  labs( 
+    title = "Eye Color of Star Wars Characters based on Gender",
+    fill = "Eye Color",
+    x = "Gender",
+    y = "Counts"
+  ) +
+  scale_fill_manual(values = c("black","blue","lightblue2","chocolate4","gray","gold","khaki","darkolivegreen","darkorange","pink","red","purple","wheat","white","gold1")) 
+```
+
+As you can see from the bar chart in #6, gender is not evenly distributed between masc, fem, and NA, so it's really interesting to see colors like red/blue and hazel where the feminine characters have a higher concentration of eyes that color. It's also interesting to note that because on blue the feminine bar is about halfway up the masculine bar that means that proportionately more women than men have blue eyes in the films. You can also see from these charts that regardless of gender the most common eye colors are brown, blue, yellow, and black.
+
+8.  Pick two numerical variables and two categorical variables and make a visualization that incorporates all of them and provide an interpretation with your answer.
+
+```{r}
+#Height, Mass, Gender, and Films
+ggplot(starwars,
+      aes(x = height,
+        y = mass,
+        color = eye_color,
+        shape = gender)) + 
+  geom_point() +
+  labs( 
+    title = "Star Wars Characters by Gender, Eye Color, Mass, and Height",
+    color = "Eye Color",
+    shape = "Gender",
+    x = "Height (cm)",
+    y = "Mass (kg)"
+  ) +
+  scale_color_manual(values = c("black","blue","lightblue2","chocolate4","gray","gold","khaki","darkolivegreen","darkorange","pink","red","purple","wheat","white","gold1"))
+```
+
+As you can see from the plot, Jabba is the worst because he throws off the whole scale of the graph, so he is definitely an unusual observation being 1199 kg bigger than the next biggest character: General Grievous weighing in at 159 kg. Yoda could also be an unusual observation because of how short and small he is (66cm and 17kg), but he's relatively close to the other smaller characters who are ironically all masculine with fall colored eyes (browns, yellows, oranges, and reds). Most of the other characters are concentrated in the height range 150cm-235cm, and the mass range 40kg-160kg. Masculine characters have both sides of the extremes of the height range covered, but you can see that typically masculine characters weigh more than the feminine characters. It's also interesting to note, that black and blue only appear in that cluster of characters while the warmer colors are kind of all over the board.

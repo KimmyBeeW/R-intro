@@ -1,0 +1,417 @@
+Recap of last few lectures
+  Basic Programming
+  Simulation Studies
+  R Packages
+  R4DS 2e
+
+Outline
+  How character and factor types differ
+  Why does it look like character type “works”? (coercion)
+  R Operations Change for Numeric and Factor Types
+  Specifying factor levels (Base R, forcats)
+
+Character and Factor Types
+One Factor Experiment
+Character
+```{r}
+library(tidyverse)
+burn <- read_csv("
+Order, Color, Time
+Run1, Yellow, 270
+Run2, Black, 177
+Run3, Red, 121
+Run4, Red, 200
+Run5, Yellow, 259
+Run6, Red, 125
+Run7, Black, 118
+Run8, Yellow, 233
+Run9, Black, 154
+")
+class(burn$Order)
+```
+Factor
+```{r}
+burn1 <- burn |>
+  mutate(Color = factor(Color, levels = c("Yellow", "Black", "Red")))
+
+class(burn1$Color)
+```
+```{r}
+burn1$Color
+```
+
+factor Details
+What’s really going on? R will recode the data in the vector as integers and store 
+the results in an integer vector
+```{r}
+typeof(burn1$Color)
+```
+[1] "integer"
+
+R will also add a levels attribute to the integer, which contains a set of labels for displaying the factor values, and a class attribute, which contains the class factor
+```{r}
+attributes(burn1$Color)
+```
+$levels
+[1] "Yellow" "Black"  "Red"   
+$class
+[1] "factor"
+
+
+What is R thinking?
+```{r}
+unclass(burn1$Color)
+```
+[1] 1 2 3 3 1 3 2 1 2
+attr(,"levels")
+[1] "Yellow" "Black"  "Red" 
+
+
+factor Details
+In general, you will have a smoother experience if you do not let R make 
+factors until you ask for them
+
+You can convert a factor to a character string with the as.character function. 
+R will retain the display version of the factor, not the integers stored in memory
+```{r}
+as.character(burn1$Color)
+```
+[1] "Yellow" "Black"  "Red"    "Red"    "Yellow" "Red"    "Black"  "Yellow" "Black" 
+
+
+
+Try to avoid joins on factors
+When using join with factors you may get this warning:
+```
+Warning message:
+In left_join_impl(x, y, by$x, by$y) :
+  joining factors with different levels, coercing to character vector
+```
+It’s not an error, it’s a warning … telling you that one of the columns used in the join was a factor and that factor had different levels in the different datasets
+
+You probably meant to convert the factors to character values so the join works as intended, but it’s worth investigating the result for unintended consequences
+
+
+Why does it look like character type “works”?
+```{r}
+out_char <- aov(Time ~ Color, data = burn)
+summary(out_char)
+```
+How to actually do it correctly vvv
+```{r}
+out_f <- aov(Time ~ factor(Color), data = burn)
+summary(out_f)
+```
+Coercion: R figures out what you meant and does it for you
+
+
+
+R Operations Change for Numeric and Factor Types
+experiment:
+  Diet Coke and Mentos
+  Response Variable: Height of Geyser (in)
+  Factors:
+    Number of Mentos (2, 3, 5)
+    Caffeine (Yes, No)
+  Resources for 3 replicates, but ended up unbalanced because bottle fell over a few times
+```{r}
+dcmentos <- read_csv("
+Order, Mentos, Caff, Geyser
+1, 3, Yes, 123.12 
+2, 3, No, 82.77 
+3, 5, Yes, 113.02 
+4, 3, No, 107.63 
+5, 5, No, 123.32 
+6, 2, Yes, 88.91 
+7, 2, Yes, 65.30 
+8, 5, No, 126.44 
+9, 5, Yes, 113.49 
+10, 5, No, 107.87 
+11, 3, No, 81.90 
+12, 3, Yes, 135.76
+")
+dcmentos
+```
+```{r}
+ggplot(dcmentos, aes(x = Caff, y = Geyser)) + 
+  geom_boxplot()
+```
+why doesn't this work as expected?
+```{r}
+ggplot(dcmentos, aes(x = Mentos, y = Geyser)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(dcmentos, aes(x = factor(Mentos), y = Geyser)) + 
+  geom_boxplot()
+```
+
+model
+```{r}
+out1 <- aov(Geyser ~ Caff * factor(Mentos), data = dcmentos)  #This one is correct!!
+summary(out1) #check degrees of freedom of factor(Mentos) should be 3-1 = 2 df
+```
+```{r}
+out2 <- aov(Geyser ~ Caff * Mentos, data = dcmentos) #This one is wrong
+summary(out2) #check degrees of freedom of factor(Mentos) should be 3-1 = 2 df
+```
+
+
+
+Specifying factor levels
+```{r}
+x <- c("X2", "X1", "X1", "X3", "X2", "X3")
+factor(x, levels = c("X1", "X2", "X3"))
+```
+```{r}
+factor(x)
+```
+Default is alphabetic / numerical order
+Usually the default alphabetic order for levels in Base R factor isn’t the right choice
+
+Clinical trial:
+  Response Variable: change in diastolic blood pressure (positive values are decreasing bp)
+  Factors:
+    Current Standard Drug (placebo)
+    New Drug Dosage (Low, Med, High)
+```{r}
+clinicaltrial <- read_csv("
+Drug, Change
+Std,    -2
+Std,     5
+Std,    -4
+Low,     4
+Low,    25
+Low,    24
+Low,     1
+Low,     2
+Low,     4
+Med,    22
+Med,    32
+Med,    43
+Med,    15
+High,   58
+High,   30
+High,   36
+High,   51
+High,   35
+")
+clinicaltrial
+```
+default
+```{r}
+clinicaltrial$Drug
+```
+```{r}
+factor(clinicaltrial$Drug)
+```
+```{r}
+out <- lm(Change ~ Drug, data = clinicaltrial)
+summary(out)
+```
+
+relevel
+Compare New Drug to Placebo
+```{r}
+clinicaltrial1 <- clinicaltrial |>
+  mutate(Drug = factor(Drug),
+         Drug = relevel(Drug, "Std"))
+
+clinicaltrial1$Drug
+```
+```{r}
+out1 <- lm(Change ~ Drug, data = clinicaltrial1)
+summary(out1)
+```
+
+
+
+forcats
+Usually the default alphabetic order for levels in Base R factor isn’t the right choice
+stat/DS data
+```{r}
+library(forcats)
+```
+
+```{r}
+# Data: Stack Overflow Survey (2022)
+# https://insights.stackoverflow.com/survey
+
+# downloaded zip file from Stack Overflow,
+# copied survey csv file to grimshawville.byu.edu so it's easier 
+# to input data into R
+survey_big <- read_csv("https://grimshawville.byu.edu/survey_results_public.csv")
+
+# reduce the columns to this research question
+# since multiple responses for Language are allowed, 
+# this is a bigger dataset than the "row is a person" dataset
+survey<- survey_big |>
+  transmute(ResponseId,
+    Language = LanguageHaveWorkedWith,
+    Employment
+  ) |>
+  # survey didn't have 'statistics' as job choice, but
+  # this appears to capture the Stat/DS popn
+  filter(str_detect(Language, "R;")) |>
+  mutate(Language = str_split(Language, pattern = ";")) |>
+  unnest(Language) |>
+  filter(!is.na(Language)) |>
+  filter(Employment == "Employed, full-time") 
+```
+factor
+```{r}
+try1 <- factor(survey$Language)
+head(try1, 16)
+```
+```{r}
+levels(try1)
+```
+notice that it is in alphabetical order
+
+
+fct
+```{r}
+try2 <- fct(survey$Language)
+head(try2, 16)
+```
+```{r}
+levels(try2)
+```
+Notice levels are in the order of appearance in the dataset
+
+
+fct_infreq
+```{r}
+try3 <- fct_infreq(survey$Language)
+head(try3, 16)
+```
+
+```{r}
+levels(try3)
+```
+Notice levels are in decreasing frequency
+
+Could get “Top 5 Languages in Stat/DS” using
+```{r}
+levels(try3)[1 : 5]
+```
+
+Top languages
+```{r}
+survey |>
+  mutate(Language = fct_infreq(Language)) |>
+  count(Language, sort = TRUE) |>
+  slice_head(n = 5) |>
+  ggplot(aes(x = Language, y = n)) +
+    geom_col() +
+    labs(
+      title = "Top Languages for Statistics & Data Science Jobs",
+      y = "Tally", x = ""
+    ) +  
+    scale_y_continuous(label = scales::comma)
+```
+
+
+
+
+
+
+Reducing the number of levels
+Pew Research Religion Survey: 2019 Parents & Teens
+```{r}
+lds
+```
+# A tibble: 51 × 163
+   preligrec PATTEND     TATTDWTH PPRAY TPRAY CaseID parent_wt teen_wt
+   <chr>     <fct>       <fct>    <fct> <chr>  <dbl>     <dbl>   <dbl>
+ 1 LDS       Once a week Both pa… A fe… Seld…     16     1.24    1.87 
+ 2 LDS       More than … Both pa… Seve… A fe…    111     0.610   0.949
+ 3 LDS       Once a week Both pa… Seve… Once…    255     0.708   0.673
+ 4 LDS       Once a week Both pa… A fe… A fe…    341     0.747   0.910
+ 5 LDS       More than … Both pa… Seve… A fe…    410     0.741   0.950
+ 6 LDS       Once a week Mother   Seve… Seve…    415     0.284   0.242
+ 7 LDS       Once a week Both pa… Seve… A fe…    468     0.378   0.562
+ 8 LDS       Once a week Both pa… Seve… A fe…    568     0.356   0.485
+ 9 LDS       Once a week Both pa… Seve… A fe…    808     2.48    3.97 
+10 LDS       Once a week Both pa… Seve… Seve…   1008     0.403   0.364
+# ℹ 41 more rows
+# ℹ 155 more variables: XSPANISH <dbl+lbl>, XPPRACEM <dbl+lbl>,
+#   PPETHM <dbl+lbl>, PPAGEREC <dbl+lbl>, PPEDUCAT <dbl+lbl>,
+#   PPGENDER <dbl+lbl>, PPINCIMPREC <dbl+lbl>, PPMARIT <dbl+lbl>,
+#   PPHHSIZEREC <dbl+lbl>, PPMSACAT <dbl+lbl>, PPREG4 <dbl+lbl>,
+#   DOV_ACSLANG <dbl+lbl>, DOV_TACSLANG <dbl+lbl>, S1 <dbl+lbl>,
+#   S2 <dbl+lbl>, PTIME <dbl+lbl>, PMOTHER <dbl+lbl>, …
+
+
+church attendance
+```{r}
+head(lds$PATTEND)
+```
+[1] Once a week           More than once a week Once a week          
+[4] Once a week           More than once a week Once a week          
+6 Levels: More than once a week ... Never
+
+
+```{r}
+levels(lds$PATTEND)
+```
+[1] "More than once a week" "Once a week"          
+[3] "Once or twice a month" "A few times a year"   
+[5] "Seldom"                "Never" 
+
+
+Convert Levels to Activity
+Collapse to LDS Culture Reference “Active” / “Inactive”
+```{r}
+lds <- lds |>
+  mutate(PATTEND = fct_collapse(PATTEND,
+          "Active" = c("More than once a week", "Once a week"),
+          "Inactive" = c("Once or twice a month", "A few times a year",
+                         "Seldom", "Never")))
+
+head(lds$PATTEND)
+```
+[1] Active Active Active Active Active Active
+Levels: Active Inactive
+```{r}
+levels(lds$PATTEND)
+```
+[1] "Active"   "Inactive"
+
+
+Table 1
+```{r}
+lds |>
+  count(PATTEND)
+```
+# A tibble: 2 × 2
+  PATTEND      n
+  <fct>    <int>
+1 Active      44
+2 Inactive     7
+
+
+Table 2
+```{r}
+table(lds$TATTDWTH, lds$PATTEND)
+```
+                 Active Inactive
+  Both parents       39        1
+  Mother              3        2
+  Father              0        1
+  I attend alone      0        0
+  Other               2        1
+
+
+Lecture Review
+  How character and factor types differ
+  Why does it look like character type “works”? (coercion)
+  R Operations Change for Numeric and Factor Types
+  Specifying factor levels (Base R, forcats)
+
+
+
+
+
+

@@ -1,0 +1,136 @@
+---
+title: "HW 2: Palmer Island Penguins"
+author: Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+library(tidyverse)
+library(palmerpenguins)
+```
+
+## 1. Palmer Penguins
+
+Measurements for penguin species, island in Palmer Archipelago, size (flipper length, body mass, bill dimensions), and sex.
+
+**Import:**
+
+```{r}
+penguins
+```
+
+**Visualize:**
+
+Make a plot showing differences between penguins and their bills.
+
+*Hint*: Look at the "Coding Out Loud" lecture for the graphic that answers this question.
+
+*Note*: Replace the `"___"` and uncomment (remove the `#`) to see the effect
+
+```{r}
+ggplot(penguins,
+       aes(x = bill_depth_mm,
+           y = bill_length_mm,
+           color = species)) +
+  geom_point() +
+  labs(
+    title = "Bill depth and length",
+    subtitle = "Dimensions for Adelie, Chinstrap, and Gentoo Penguins",
+    x = "Bill Depth (mm)", y = "Bill Length (mm)",
+    color = "Species",
+    caption = "Source: Palmer Station LTER / palmerpenguins package"
+    ) +
+    scale_color_viridis_d() 
+```
+
+## 2. Chinstrap Penguins
+
+Chinstrap penguins are one of the species in the Palmer Archipelago.
+
+**Import:**
+
+```{r}
+chinstrap <- penguins |>
+  filter(species == "Chinstrap") |>
+  na.omit()
+chinstrap
+```
+
+**Visualize flipper length:**
+
+*Hint*: Since penguin flipper length is univariate data, to answer this question you will want to try a histogram, density plot, boxplot and your answer will be the one of them that you think best communicates the shape, center, variation, and anything unusual about the distribution.
+
+*Note*: Change `eval` to `true` and replace the `"___"`
+
+```{r}
+#| eval: true
+ggplot(chinstrap, aes(x = flipper_length_mm)) +
+  geom_density(adjust = 0.8, fill = "darkorchid", alpha = 0.5) +
+  labs(
+    x = "Flipper Length",
+    y = "Density",
+    title = "Chin Strap Flipper Length"
+  )
+chinstrap <- penguins |>
+  filter(species == "Chinstrap") |>
+  na.omit()
+chinstrap
+median(chinstrap$flipper_length_mm)
+IQR(chinstrap$flipper_length_mm)
+```
+
+**Communicate:**
+
+Prompt: What should someone know about the Chinstrap penguin flipper length distribution? (shape, center, spread, anything unusual)
+
+-   Shape: Normal, nearly symmetric, with a tiny skew toward larger values. Uni-model
+-   Center: 196mm
+-   Spread: Most of the data is between 180 and 210 with an IQR of 10mm
+-   No unusual observations
+
+**Visualize distribution of year (data collection over time):**
+
+*Note*: Change `eval` to `true` and replace the `"___"`
+
+```{r}
+#| eval: true
+ggplot(chinstrap, aes(x = year)) +
+  geom_histogram(bins = 3, color = "black", fill = "darkred", alpha = 0.7)+
+  labs( 
+    x = "Year", 
+    y = "Count", 
+    title = "Chinstraps Over Time"
+  ) 
+```
+
+**Communicate:**
+
+Prompt: What should someone know about how the Chinstrap penguin data was collected over time (different years)?
+
+The number of penguins collected was different from year to year. The first and third years are around 25, but the second year was less than 20.
+
+## Stretch Exercise:
+
+Is the Chinstrap penguin flipper length distribution approximately normal?
+
+Yes, it is approximately normal.
+
+```{r}
+ggplot(data = chinstrap, aes(x = flipper_length_mm))+
+  geom_density(fill = "lightpink", alpha = 0.5) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(chinstrap$flipper_length_mm),
+                            sd = sd(chinstrap$flipper_length_mm)),
+                color = "purple") +
+  labs( 
+  x = "Flipper length (mm)",
+  title = "Chinstrap Flipper length Distribution",
+  subtitle = "Penguins on Palmer Islands",
+  caption = "Source: Palmer Station LTER / palmerpenguins package"
+  )
+```

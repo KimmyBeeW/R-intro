@@ -1,0 +1,199 @@
+---
+title: "Wrangling 4 Your Turn: Hotel Pricing Demand"
+author: Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+## Analysis Objective
+
+Goal is to predict the price a consumer would purchase a hotel room
+
+-   If offered price is too high, the hotel will lose revenue because the room goes unused.
+
+-   If the offered price is too low, the consumer will pay for the room because they got a good deal but the hotel will have lost potential revenue because they could have charged a higher price and still got the booking.
+
+## Import
+
+From the Tidy Tuesday website
+
+```{r}
+#| warning: false
+library(tidyverse)
+
+hotel <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
+```
+
+## Tidy
+
+```{r}
+slice_sample(hotel, n = 10)
+```
+
+```{r}
+# A different view of the provided dataset
+glimpse(hotel)
+```
+
+Tidy because: Observations in rows, Variables in columns, Only one number in every chunk (so each individual observation listed only has one number per variable).
+
+## Understand
+
+-   pay less by staying longer?
+
+-   weekend stay costs more at City Hotel?
+
+## Transform
+
+Dataset is tall and wide. What are we focused on?
+
+-   Room Cost
+
+-   Focus on the City Hotel Property
+
+-   Focus on the Bookings not cancelled
+
+-   Do we have length of stay? How do we compute it?
+
+-   Do we know which bookings include a weekend? How do we compute it?
+
+```{r}
+cityhotel <- hotel |>
+  filter(hotel == "City Hotel") |>
+  filter(is_canceled == 0) |>
+  mutate(stay = stays_in_weekend_nights + stays_in_week_nights,
+         weekend = ifelse(stays_in_weekend_nights > 1, "Weekend", "NotWeekend")) |>
+  select(adr, weekend, stay)
+```
+
+## Visualize
+
+Pay Less by Staying Longer?
+
+```{r}
+#| code-fold: true
+cityhotel |>
+  filter(stay < 20) |>
+  filter(adr > 10) |>
+  ggplot(aes(x = stay, y = adr)) +
+    geom_jitter(size = 3, color = "tan", alpha = 0.2) +
+    geom_smooth(se = FALSE) +
+    scale_y_log10() +  
+      labs(title = "City Hotel",
+           y = "Ave Daily Rate ($)",
+           x = "Length of Stay (days)")
+
+```
+
+Weekend Stay Costs More?
+
+```{r}
+#| code-fold: true
+ggplot(cityhotel, aes(x = weekend, y = adr)) +
+  geom_boxplot() +
+  labs(title = "City Hotel",
+       y = "Ave Daily Rate ($)",
+       x = NULL)
+```
+
+## Understand
+
+-   Learned A Lot. Need To Understand More!
+
+-   Price is more complicated. What are other possible effects?
+
+## Transform
+
+Add some lines to the previous creation of `cityhotel`
+
+-   Log transformation can't have `adr` zero
+
+-   additional columns
+
+```{r}
+cityhotel <- hotel |>
+  filter(hotel == "City Hotel") |>
+  filter(is_canceled == 0) |>
+  filter(adr > 10) |>
+  mutate(stay = stays_in_weekend_nights + stays_in_week_nights,
+         weekend = ifelse(stays_in_weekend_nights > 1, "Weekend", "NotWeekend")) |>
+  select(adr, weekend, stay, lead_time, is_repeated_guest, 
+         required_car_parking_spaces, total_of_special_requests)
+```
+
+Create train and test datasets for modeling (70-30%)
+
+45,073 rows in `cityhotel` (70% is 31,551.1)
+
+```{r}
+train_samplesize <- 32000
+set.seed(2319)
+train_rows <- sample(45073, train_samplesize)
+head(train_rows)
+
+train <- cityhotel[train_rows, ]
+test <- cityhotel[-train_rows, ]
+```
+
+## Visualize
+
+```{r}
+library(GGally)
+ggpairs(train)
+```
+
+## Model
+
+Fit a regression model to `adr`
+
+```{r}
+out1 <- lm(log(adr) ~ ., data = train)
+summary(out1)
+```
+
+Prediction Performance
+
+```{r}
+mean( (train$adr - exp( predict(out1) ) )^2 )
+
+mean( (test$adr - exp( predict(out1, newdata = test) ) )^2 )
+```
+
+## Communicate
+
+Table 1
+
+```{r}
+library(table1)
+# Pretty variable names
+label(train$adr) <- "Ave Daily Rate"
+units(train$adr) <- "$"
+label(train$stay) <- "Length of Stay"
+units(train$stay) <- "days"
+label(train$lead_time) <- "Days between Booking and Arrival"
+label(train$weekend) <- "Type of Booking"
+# coded as 0 / 1 but not numeric
+train$is_repeated_guest <- ifelse(train$is_repeated_guest == 1, "Yes", "No")
+label(train$is_repeated_guest) <- "Repeat Guest?"
+label(train$required_car_parking_spaces) <- "Parking Spaces Required"
+
+table1(~ adr + stay + lead_time + weekend 
+         + is_repeated_guest + required_car_parking_spaces, 
+       data = train)
+```
+
+Table of forecast log returns and volatility
+
+Signs on regression coefficients make sense
+
+Prediction in the future can be trusted (no evidence of overfit)
+
+Naive prediction uncertainty
+
+$$
+\hat{Y}\ \pm\ 2 \sqrt{1320} = \hat{Y}\ \pm\  2 \cdot 36.3 = \hat{Y}\ \pm\ 73
+$$
+
+***Note:*** use `predict` and untransform for precise prediction interval

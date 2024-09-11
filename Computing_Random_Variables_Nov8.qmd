@@ -1,0 +1,284 @@
+Simulation: Computing Random Variables
+
+Recap of last few lectures
+  Functions
+  Loops
+
+Outline
+  Simulation (Computing Random Variables)
+  Using R as a Calculator (.R script files)
+  Approximating P(A)
+  Approximating E(Y)
+
+Motivating Example
+  Intro to Gaming / Gambling: Roulette
+  Begin with a budget you are prepared to lose (Budget)
+  Place the minimum bet (MinBet)
+  Add winnings to amount you are prepared to lose
+  Continue to play until you’ve lost it all
+  Count how many turns / bets until you lost it all
+
+Motivating Example
+  There are many possible bets in roulette
+  Line Bet
+  Pays 5 : 1
+  Called “Line” because you put your chips between two sets of values
+  
+Assume you have a "$100" Gaming Budget and the Minimum Bet is "$25"
+P(lose quickly)
+  = P(lose first 4 bets)
+  = (1-6/38)*(1-6/38)*(1-6/38)*(1-6/38)
+  = 0.5028813
+  
+Approximating Probability by Simulation
+  Thinking statistically, we could approximate this probability by gathering the data from people playing exactly this game in exactly this way
+  Need a big sample size (actually, the bigger the sample size the more precise the proportion is for the “true probability”)
+  Instead of asking people to do this, we can “simulate” the data we’d get if we did
+Approximating Probability by Simulation
+Theoretically,
+    the lim as N --> infinity of (Number of times Event A occurs)/N = P(A)
+Simulation Code needs to perform experiment and determine if Event A occurs, and repeat many times (in a for loop).
+
+Motivating Example
+    R code to simulate playing roulette
+    We will use R as a calculator
+    Notice these aren’t datasets that we’d use tidyverse functions to work with
+
+Simulate playing roulette: if you get 125, you win. -25, you lose.
+```{r}
+# "spin" the roulette wheel 1-36 with 0 and 00 (00 will be -1)
+outcome <- sample(-1 : 36, 1)
+outcome
+
+# did we win? If so, we get 5 : 1 payoff
+# note: this is a specific line bet 
+#       (would the probability change if we chose a different line?)
+ifelse(outcome >= 7 & outcome <= 12, 125, -25)
+```
+
+R code to play until you lose all your gaming budget
+```{r}
+howlong <- function(Budget, MinBet){
+
+  plays <- 0
+    
+  while(Budget - MinBet >= 0){
+
+    # "spin" the roulette wheel 1-36 with 0 and 00 (00 will be -1)
+    outcome <- sample(-1 : 36, 1)
+    plays <- plays + 1
+
+    # did we win?
+    payoff <- ifelse(outcome >= 7 & outcome <= 12, 5 * MinBet, - MinBet)
+
+    # update Stake
+    Budget <- Budget + payoff
+
+  }
+
+  # game over
+  plays
+}
+```
+```{r}
+howlong(Budget = 100, MinBet = 25)
+```
+
+Based on these 4 “Simulated Players”
+  P(lose all your gaming budget in 4 bets) = about 2/4 = 0.5
+which is “close” to the true value 0.5028813
+
+To get a better approximation, we would need to simulate more players
+Remember the “Law of Large Numbers” from Stat 121?
+
+Approximate P(lose quickly) with a simulation study of 10,000 players
+Use for loop to simulate Nsim players
+```{r}
+# define player behavior
+Budget <- 100
+MinBet <- 25
+
+# simulate the number of plays
+Nsim <- 10^5
+set.seed(2112)
+number_plays <- rep(0, Nsim)
+for(i in 1 : Nsim){
+  number_plays[i] <- howlong(Budget, MinBet)
+}
+
+# compute approx P(lose quickly)
+mean(number_plays == 4)
+```
+
+Approx Probability
+```{r}
+# simulated players
+head(number_plays, 15)
+```
+```{r}
+# compute approx P(lose quickly)
+mean(number_plays == 4)
+```
+Close to “true probability” 0.5028813
+
+
+Can use the simulated players in number_plays to approximate other probabilities (easy to code, hard to derive theoretically)
+P(playing all night)
+Each bet and spin of the roulette wheel takes about 5 min, so 12 hours playing is 12 * 12 = 144 plays
+```{r}
+# compute approx P(play all night)
+mean(number_plays >= 144)
+```
+
+
+
+
+Approximating E(Y) by Simulation
+  Thinking statistically, we could approximate E(Y) by gathering the data from people playing exactly this game in exactly this way
+  Simulation Mean Y_bar is approximately E(Y)
+  Again the “Law of Large Numbers”
+  
+Approximating E(Y) by Simulation
+Reorganize the data from Y1, Y2, Y3,...., Yn to
+Possible Value of Y    times occurs	  proportion of times occurs
+0                       f0                p0
+1                       f1                p1
+2                       f2                p2
+3                       f3                p3
+4                       f4                p4
+
+ 
+Using the results of the simulation of Nsim players
+Compute the sample mean of the simulated players
+```{r}
+# compute approx E(Y) where Y = number of plays
+mean(number_plays)
+```
+Note: What would we need to do to compute E(Y) exactly (say, in Stat 240)?
+E(Y) does not represent the typical value which is why casinos always win
+Probability of getting the mean or higher:
+```{r}
+mean(number_plays > mean(number_plays))
+```
+
+Other Approximations by Simulation
+  Variance
+  median
+  pdf / pmf to describe shape and show a picture
+  quantiles
+  
+Approximate Variance
+```{r}
+var(number_plays)
+```
+
+Approximate Quantile
+95% of players will lose it all before how many plays / bets?
+```{r}
+quantile(number_plays, 0.95)
+```
+
+Notice we are treating our simulated players as “data” in R data functions
+If it was real data these would be “estimates” but with the simulated players these are “approximations”
+  
+
+Lecture Review
+Simulation (Computing Random Variables)
+Approximating P(Y)
+Approximating E(Y)
+
+Appendix:
+- Without Loss of Generality
+- Using Simulations in “What If” Scenarios  
+
+
+Without Loss of Generality
+  When writing the simulation code we have to make decisions on details for the computation, but we expect the specific choice doesn’t impact the results
+  For example, in this code we needed to specify a line bet (we used 7 - 12) in the payoff line
+  We don’t anticipate this detail to impact the result
+
+Change the detail of the Line Bet
+Modify the payoff line to win when outcome is 22, 23, 24, 25, 26, 27
+```{r}
+howlong <- function(Budget, MinBet){
+
+  plays <- 0
+    
+  while(Budget - MinBet >= 0){
+
+    # "spin" the roulette wheel 1-36 with 0 and 00 (00 will be -1)
+    outcome <- sample(-1 : 36, 1)
+    plays <- plays + 1
+
+    # did we win?
+    payoff <- ifelse(outcome >= 22 & outcome <= 27, 5 * MinBet, - MinBet)
+
+    # update Stake
+    Budget <- Budget + payoff
+
+  }
+
+  # game over
+  plays
+}
+```
+```{r}
+# define player behavior
+Budget <- 100
+MinBet <- 25
+
+# simulate the number of plays
+Nsim <- 10^5
+set.seed(2319)
+number_plays <- rep(0, Nsim)
+for(i in 1 : Nsim){
+  number_plays[i] <- howlong(Budget, MinBet)
+}
+
+# compute approx P(lose quickly)
+mean(number_plays == 4)
+```
+Close to “true probability” 0.5028813
+Close to “approx probability” using different line bet detail 0.50054
+
+
+Close Enough?
+Recall this is an approximation, so we are comparing how close two approximations are
+Thinking statistically, the width of the two-sample proportions 95% confidence interval is
++- 1.96*sqrt((.5^2/10^5)*2) = +- 0.0044
+Note: by changing the specific line bet detail the difference in approximations is 0.50054 - 0.50406 = -0.00352, which is within the confidence interval
+
+Using Simulations in “What If” Scenarios
+  What if the gaming budget increased to $200?
+  Intuition is that the number of bets / plays will increase, and we can be more precise
+```{r}
+# define player behavior
+MinBet <- 25
+# Different Budget is below
+
+# simulate the number of plays
+Nsim <- 10^5
+set.seed(2182)
+number_plays100 <- rep(0, Nsim)
+number_plays200 <- rep(0, Nsim)
+for(i in 1 : Nsim){
+  number_plays100[i] <- howlong(100, MinBet)
+  number_plays200[i] <- howlong(200, MinBet)
+}
+```
+
+Compare probability of “lose quickly” for different gaming budget
+```{r}
+mean(number_plays100 <= 8)
+```
+```{r}
+mean(number_plays200 <= 8)
+```
+
+Compare E(Y) for different gaming budget
+```{r}
+mean(number_plays100)
+```
+```{r}
+mean(number_plays200)
+```

@@ -1,0 +1,343 @@
+## R Basics 2
+
+Recap of last lecture
+  Atomic Vectors
+  Lists
+  
+Outline
+  Data Frames
+  Modifying Values
+  Loops and Vectorized Code / Functional Programming
+  Logical Subsetting
+  Missing Information
+
+## Data Frames
+One Factor Experiment
+```{r}
+library(tidyverse)
+burn <- read_csv("
+Order, Color, Time
+Run1, Yellow, 270
+Run2, Black, 177
+Run3, Red, 121
+Run4, Red, 200
+Run5, Yellow, 259
+Run6, Red, 125
+Run7, Black, 118
+Run8, Yellow, 233
+Run9, Black, 154
+")
+```
+Looks like a matrix, but it’s a list!
+```{r}
+dim(burn)
+```
+```{r}
+typeof(burn)
+```
+```{r}
+attributes(burn)
+```
+
+
+## Selecting Values from Data Frames
+```{r}
+burn
+```
+```{r}
+burn[4, 1]
+```
+```{r}
+burn[4, c(2, 3)]
+```
+```{r}
+burn[4, ]
+```
+Notice indexing begins at 1
+
+```{r}
+burn[, 3]
+```
+```{r}
+burn$Color
+```
+```{r}
+typeof(burn$Color)
+```
+
+```{r}
+burn |>
+  filter(Color == "Yellow")
+```
+```{r}
+burn[burn$Color == "Yellow", ]
+```
+```{r}
+burn[burn$Color == "Yellow"] #THIS DOESN'T WORK BECAUSE THERE IS NO COMMA, look for the correct one up above
+```
+
+
+
+## Modifying Values
+Changing Values in Place
+```{r}
+y <- c(0, 0, 0, 0, 0, 0)
+y
+```
+Select the first value of y
+```{r}
+y[1]
+```
+Modify it
+```{r}
+y[1] <- 1000
+y
+```
+Replace multiple values
+```{r}
+y[c(1, 3, 5)] <- c(1, 11, 111)
+y
+```
+```{r}
+y[c(2, 4)] <- -4
+y
+```
+Values that do not exist yet
+```{r}
+y[7 : 9] <- c(7, 8, 9)
+y
+```
+```{r}
+z <- NULL
+z
+```
+```{r}
+z <- c(z, 5 : 2)
+z
+```
+
+
+
+
+## Loops and Vectorized Code
+Working with a dataset: Many ways to do the same thing
+Compute Stock Return
+
+Disney Stock Price
+```{r}
+DIS <- read_csv("https://query1.finance.yahoo.com/v7/finance/download/DIS?period1=-252374400&period2=9999999999&interval=1d&events=history&includeAdjustedClose=true") |>
+  select(Date, Close)
+
+tail(DIS, 12)
+```
+tidyverse
+```{r}
+DIS1 <- DIS |>
+  mutate(logreturn = log(Close / lag(Close)) )
+tail(DIS1)
+```
+
+```{r}
+head(DIS, 12)
+```
+for loop
+```{r}
+DIS2 <- DIS
+for(i in 1 : dim(DIS)[1]){
+  if(i == 1){
+    DIS2$logreturn[1] <- NA
+  } else{
+    DIS2$logreturn[i] <- log(DIS$Close[i] / DIS$Close[i - 1])
+  }
+}
+head(DIS2)
+```
+
+Compute Stock Return
+Which is faster? tidyverse vs for loop
+tidyverse
+```{r}
+# Start the clock
+ptm <- proc.time()
+
+DIS1 <- DIS |>
+  mutate(logreturn = log(Close / lag(Close)) )
+
+# Stop the clock
+proc.time() - ptm
+```
+for loop
+```{r}
+# Start the clock
+ptm <- proc.time()
+
+DIS2 <- DIS
+for(i in 1 : dim(DIS)[1]){
+  if(i == 1){
+    DIS2$logreturn[1] <- NA
+  } else{
+    DIS2$logreturn[i] <- log(DIS$Close[i] / DIS$Close[i - 1])
+  }
+}
+
+# Stop the clock
+proc.time() - ptm
+```
+
+
+
+
+## Loops and Functional Programming
+Working with a dataset: Many ways to do the same thing
+Compute Annual Maximum
+
+Coal Creek
+```{r}
+bigdata <- read_table("https://nwis.waterservices.usgs.gov/nwis/iv/?sites=10242000&parameterCd=00065&startDT=2000-01-01T00:00:00.000-06:00&endDT=2026-12-31T23:59:59.999-06:00&siteStatus=all&format=rdb",
+                      col_names = c("label1", "label2", "Date", "Time", "tz", "Height", "label3"),
+                      skip = 32) |>
+  mutate(Date = ymd_hms(paste(Date, Time), tz = "America/Denver")) |>
+  select(Date, Height)
+
+tail(bigdata)
+```
+
+Conceptualize Computation
+```{}
+      2007    2008           2020    2021
+                     . . .                     . . .
+     Height  Height         Height  Height
+      4.77    5.51           4.28    4.46
+      4.79    4.83           4.38    4.77
+      4.74   13.03           4.51    4.47 
+      4.76    5.08           4.28    5.43
+      4.87    4.91           4.93    4.94
+       .       .              .       .
+       .       .              .       .
+       .       .              .       .
+
+Max: 14.2    13.9    . . .   6.94    9.68      . . .
+```
+
+
+Which is faster?
+tidyverse
+```{r}
+# Start the clock
+ptm <- proc.time()
+
+peak1 <- bigdata |>
+  mutate(Year = year(Date)) |>
+  group_by(Year) |>
+  summarize(
+    Max_Height = max(Height)
+  )
+
+# Stop the clock
+proc.time() - ptm
+```
+for loop
+```{SQL}
+FOR each value of YEAR
+
+  FILTER dataset to observations of YEAR
+  
+  COMPUTE max(Height) for filtered dataset
+  
+END
+```
+
+```{r}
+# Start the clock
+ptm <- proc.time()
+
+my_years <- unique(year(bigdata$Date))
+peak2 <- rep(0, length(my_years))
+for(i in 1 : length(my_years)){
+  this_year <- filter(bigdata, year(Date) == my_years[i])
+  peak2[i] <- max(this_year$Height)
+}
+
+# Stop the clock
+proc.time() - ptm
+```
+
+
+
+## Logical Subsetting
+```{r}
+1 > 2
+```
+```{r}
+1 > (0 : 2)
+```
+```{r}
+(1 : 3) == (3 : 1)
+```
+%in%
+```{r}
+1 %in% c(3, 4, 5)
+```
+```{r}
+c(1, 2) %in% c(3, 4, 5)
+```
+```{r}
+c(1, 2, 3, 4) %in% c(3, 4, 5)
+```
+
+```{r}
+x <- 3
+x > 2 & < 9
+```
+
+```{r}
+x <- 3
+2 < x & x < 9
+```
+```{r}
+a <- c(1, 2, 3)
+b <- c(1, 2, 3)
+c <- c(1, 2, 4)
+a == b
+```
+```{r}
+b == c
+```
+```{r}
+a == b & b == c
+```
+
+
+
+## Missing Information
+```{r}
+y <- c(NA, 1 : 20)
+y
+```
+ [1] NA  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+
+na.rm
+```{r}
+mean(y)
+```
+[1] NA
+```{r}
+mean(y, na.rm = TRUE)
+```
+[1] 10.5
+
+is.na
+```{r}
+c(1, 2, 3, NA) == NA
+```
+[1] NA NA NA NA
+```{r}
+z <- c(1, 2, 3, NA)
+is.na(z)
+```
+[1] FALSE FALSE FALSE  TRUE
+```{r}
+z <- c(NA, z)
+z
+
+[1] NA  1  2  3 NA

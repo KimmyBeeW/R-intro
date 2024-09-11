@@ -1,0 +1,192 @@
+## Import Basics ##
+
+#Recap of last few lectures
+  Wrangling Grammar
+  Getting the dataset we want from the dataset(s) we are given
+  Project has you thinking how curated datasets came to be
+
+#Outline
+  R Project
+  Local Dataset Files
+  Comma-, Space-Delimited
+  Excel
+  Code to build what we want, copy of dataset to share
+
+#Where does your analysis live?
+  - As a beginner, it’s okay to rely on your current Environment to contain all 
+    the objects you have created throughout your analysis.
+  - However, to make it easier to work on larger projects or collaborate with 
+    others, your source of truth should be the Quarto file and R scripts.
+  - With your R scripts (and your data files), you can recreate the environment.
+  - With only your environment, it’s much harder to recreate your R scripts: 
+    you’ll either have to retype a lot of code from memory (inevitably making 
+    mistakes along the way) or you’ll have to carefully mine your R history.
+
+
+  To help keep your R scripts as the source of truth for your analysis, we highly 
+  recommend that you instruct RStudio not to preserve your workspace between sessions.
+
+
+  This will cause you some short-term pain, because now when you restart RStudio, it will no longer remember the code that you ran last time nor will the objects you created or the datasets you read be available to use.
+
+  But this short-term pain saves you long-term agony because it forces you to capture all important procedures in your code. There’s nothing worse than discovering three months after the fact that you’ve only stored the results of an important calculation in your environment, not the calculation itself in your code.
+
+  
+  As a beginning R user, it’s OK to let your working directory be your home directory, documents directory, or any other weird directory on your computer.
+
+  But you’re almost done with Stat 250, and you’re no longer a beginner. You should evolve to organizing your projects into directories and, when working on a project, set R’s working directory to the associated directory.
+
+
+
+#R Project
+  Keeping all the files associated with a given project (input data, R scripts, analytical results, and figures) together in one directory is such a wise and common practice that RStudio has built-in support for this via projects.
+
+  Double-click that file to re-open the project.
+
+  Notice you get back to where you left off: it’s the same working directory and command history, and all the files you were working on are still open. Because you followed the “clean slate” instructions, you will, however, have a completely fresh environment, guaranteeing that you’re starting with a clean slate.
+
+
+# Import From Local Files
+Download file(s) to R Project directory
+```{r}
+library(tidyverse)
+TitanicTrain <- read_csv("~/Documents/BYU_Fall_2023/Stat250/Notes/Import/KaggleTitanicTrain.csv")
+TitanicTrain
+```
+CSV (comma delimited file)
+    - column values are separated / delimited by ,
+    - first row has column names
+    - text that forms a single column and has , is in "
+    - ,, results in NA (missing value)
+
+
+#Import / Transform
+Once you read data in, the first step usually involves transforming it in some way to make it easier to work with in the rest of your analysis.
+  mutate
+      Convert Pclass (Ticket Class) from numeric to Ordinal Factor
+      Change values of Survived from 0/1 to TRUE/FALSE
+  rename
+      Change name SibSp to SiblingSpouse
+      Change name Parch to ParentChild
+```{r}
+TitanicTrain <- TitanicTrain |> 
+  mutate(
+    Pclass = factor(Pclass, levels = c(1, 2, 3)),
+    Survived = ifelse(Survived == 1, TRUE, FALSE)
+  ) |>
+  rename(
+    SiblingSpouse = SibSp,
+    ParentChild = Parch
+  )
+TitanicTrain
+```
+
+Import/Transform
+It can be useful for speeding up reading the data if you have a large file and only want to use some of the columns
+```{r}
+TitanicTrain1 <- read_csv("~/Documents/BYU_Fall_2023/Stat250/Notes/Import/KaggleTitanicTrain.csv",
+                         col_types = cols_only(Survived = col_number(),
+                                               Pclass = col_factor(),
+                                               Age = col_number(),
+                                               Fare = col_number()))
+```
+
+
+Space-delimited file
+Oscar "Thanks"
+    Kashlak (2019) Significance
+    Winning an Academy Award is a career highlight for actors, directors and anyone else involved in the movie business. But the happiness and gratitude that accompany a win often lead to long, rambling acceptance speeches.
+    Count “Thanks” in Oscar Thank You Speeches
+    https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1740-9713.2019.01231.x
+```{r}
+# Oscar Database: http://aaspeechesdb.oscars.org/
+# Runtimes from Wikipedia
+# budget from IMDB
+# inflate from https://www.bls.gov
+## wcnt:    number of words in the Best Picture acceptance speech
+## year:    movie release year (broadcast occurs in year+1)
+## budget:  total unadjusted budget in US dollars
+## inflate: Inflation rate with respect to Fall 2018
+## thanksP: number of "thanks" in the Best Picture speech
+## man:     number of words in the Best Leading Actor speech
+## woman:   number of words in the Best Leading Actress speech
+## thanksM: number of "thanks" in the Best Leading Actor speech
+## thanksW: number of "thanks" in the Best Leadeing Actress speech
+## time:    total broadcast runtime in minutes
+ wcnt year    budget inflate thanksP  man   woman  thanksM  thanksW  time
+  212 1942   1344000   16.06  3       101     452        1        2   108
+  119 1946   2100000   13.85  1        56     218        2        1   101
+  176 1947   2000000   11.73  5        96     220        1        1   172
+   50 1949         0   10.51  4        29      31        3        1   118
+   34 1950   1400000   10.73  4       208      46        3        1   110
+   31 1951   2723903    9.93  3        73      43        1        1   138
+  156 1952   4000000    9.51  3       159     100        0        4   113
+   97 1953   1650000    9.48  3         4      33        2        1    93
+   46 1954    910000    9.37  1        64      33        1        2   118
+   70 1955    343000    9.44  1        61      71        4        1   108
+   35 1956   6000000    9.41  2        22     132        1        3    90
+```
+
+Details:
+at least one space between column values (no missing values)
+need to ignore / skip the first 14 lines
+column names in “first” row
+
+read_table
+```{r}
+thanks<-read_table("https://sites.ualberta.ca/~kashlak/data/oscDataTable.txt",
+                   skip=14)
+thanks
+```
+
+Visualize
+```{r}
+ggplot(thanks, aes(x = year, y = time)) +
+  geom_point() + 
+  geom_vline(xintercept = 1972.5) + 
+  labs(
+    title = "Oscar Awards Show",
+    x = "",
+    y = "Run Time (min)"
+  )
+```
+
+
+
+Excel file
+  - Example: Grimshaw & Larson (2021), “Effect of Star Power on NBA All-Star Game TV Audience,” Journal of Sports Economics
+  - Download Excel file and save to R Project folder https://grimshawville.byu.edu/NBArecordatbreak.xlsx
+  - Double-click on R Project File
+
+read_excel reads both xls and xlsx files and detects the format from the extension
+```{r}
+library(readxl)
+AtBreak <- read_excel("NBArecordatbreak.xlsx")
+AtBreak
+```
+
+Tidy
+```{r}
+names(AtBreak)[1] <- "Team"
+AtBreak <- AtBreak |>
+  pivot_longer(
+    cols = as.character(2003 : 2018),
+    names_to = "Year",
+    values_to = "WinningProp"
+  )
+AtBreak
+```
+
+To Share
+```{r}
+write_csv(AtBreak, "NBArecordatbreak.csv")
+```
+
+
+
+
+
+
+
+
+

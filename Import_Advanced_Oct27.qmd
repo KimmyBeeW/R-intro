@@ -1,0 +1,134 @@
+Import Advanced
+
+Recap of last lecture
+  R Project
+  Local Dataset Files
+  Comma-, Space-Delimited
+  Excel
+  Code to build what we want, copy of dataset to share
+  
+Outline
+  Webpage Table (html)
+  Ethics and Terms of Service
+  SAS and SPSS and Stata
+  
+Webpage Table
+Example: BYU Women’s Volleyball Record
+https://byucougars.com/sports/womens-volleyball/schedule/season/2022?view=list
+
+#Import
+rvest package
+read_html reads all the code for a website url
+html_element("table") identifies the table part of the code
+html_table() extracts the table as an R dataframe
+```{r}
+library(tidyverse)
+library(rvest)
+
+url <- "https://byucougars.com/sports/womens-volleyball/schedule/season/2022?view=list"
+html <- read_html(url)
+
+data <- html |> 
+  html_element("table") |> 
+  html_table()
+data
+```
+
+
+#Tidy
+```{r}
+# better column names
+colnames(data) <- c("date", "opponent", "location", "results", "links")
+# parse opponent to clean up and create new column for home/away
+data <- data |>
+  mutate(where = ifelse(substr(opponent, 1, 2) == "at", "away", "home")) |>
+  mutate(opponent = ifelse(where == "away", substr(opponent, 3, length(opponent)-2), substr(opponent, 4, length(opponent)-3))) 
+# parse score
+data <- data |>
+  mutate(result = substr(results, 1, 1)) |>
+  mutate(byu_score = as.numeric( substr(results, 4, 4) )) |> 
+  mutate(opponent_score = as.numeric( substr(results, 6, 6) ))
+# columns to keep
+data <- data |>
+  select(date, opponent, where, byu_score, opponent_score, result)
+
+data
+```
+
+Make it a csv to share
+```{r}
+write_csv(data, "BYUwvb2022.csv")
+```
+
+If you make a report in a QMD file:
+#Import
+```{r}
+BYU_WVB <- read_csv("BYUwvb2022.csv")
+BYU_WVB
+```
+
+Ethics
+  - Legalities depend a lot on where you live. However, as a general principle, if the data is public, non-personal, and factual, you’re likely to be ok.
+  - If the data isn’t public, non-personal, or factual or you’re scraping the data specifically to make money with it, you’ll need to talk to a lawyer.
+
+
+Terms of Service
+  - If you look closely, you’ll find many websites include a “terms and conditions” or “terms of service” link somewhere on the page, and if you read that page closely you’ll often discover that the site specifically prohibits web scraping. These pages tend to be a legal land grab where companies make very broad claims. It’s polite to respect these terms of service where possible, but take any claims with a grain of salt.
+  - US courts have generally found that simply putting the terms of service in the footer of the website isn’t sufficient for you to be bound by them, e.g., HiQ Labs v. LinkedIn.
+  - Generally, to be bound to the terms of service, you must have taken some explicit action like creating an account or checking a box. This is why whether or not the data is public is important; if you don’t need an account to access them, it is unlikely that you are bound to the terms of service.
+  - Note, however, the situation is rather different in Europe where courts have found that terms of service are enforceable even if you don’t explicitly agree to them.
+
+Example
+  - https://developer.imdb.com/
+  - 1 month free trial
+  - 12 month IMDb Essential Metadata $150,000
+  - 12 month IMDb and Box Office Mojo $400,000
+https://aws.amazon.com/marketplace/seller-profile?id=0af153a3-339f-48c2-8b42-3b9fa26d3367
+
+
+SAS and SPSS and Stata
+haven package
+  Part of tidyverse
+  Not loaded with package(tidyverse)
+  SAS files (.sas7bdat + .sas7bcat): read_sas
+  SAS Transport files (v5 & 8): read_xpt
+  SPSS files: read_sav
+  Stata files: read_dta
+  Also write_ versions (you can do data work with tidyverse and transfer data types to SAS/SPSS/Stata)
+
+Examples:
+#SAS
+NHANES 2015-206 Dietary Data (Individual Foods, First Day)
+```{r}
+library(haven)
+
+foods<-read_xpt("https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/DR1IFF_I.XPT")
+foods
+```
+
+#SPSS
+Benenson, J.F. and Wrangham, R.W. (2016) Current Biology
+Following a conflict, males are predisposed to be more ready than females to repair their relationship via friendly contact
+Duration or frequency of peaceful physical contacts served as the measure of post-conflict affiliation because they are strongly associated with pro-social intentions
+```{r}
+library(haven)
+
+tennis <- read_sav("https://ndownloader.figshare.com/files/4699615")
+tennis
+```
+
+#Stata
+A researcher is interested in how variables, such as GRE (Graduate Record Exam scores), GPA (grade point average) and prestige of the undergraduate institution, effect admission into graduate school. The response variable, admit/don’t admit, is a binary variable.
+```{r}
+library(haven)
+
+gradschool <- read_dta("https://stats.idre.ucla.edu/stat/stata/dae/binary.dta")
+gradschool
+```
+
+
+Lecture Review
+  Webpage Table (html)
+  Ethics and Terms of Service
+  SAS and SPSS and Stata
+  

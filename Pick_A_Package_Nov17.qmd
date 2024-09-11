@@ -1,0 +1,43 @@
+```{r}
+library(fun)
+X11(type = 'Xlib') 
+```
+
+Alzheimer_test
+```{r}
+alzheimer_test(
+  char1 = c("9", "O", "M", "I", "F", "D"),
+  char2 = c("6", "C", "N", "T", "E", "O"),
+  nr = 10,
+  nc = 30,
+  seed = NULL)
+```
+Arguments
+char1 the ’background’ character
+char2 the character to be found out
+nr number of rows of the character rectangle
+nc number of columns
+seed seed for random number generation
+... other arguments passed to set.seed
+Value
+If at least one test item has been passed, a data.frame will be returned telling the result of the test.
+
+Gomuku
+```{r}
+gomoku(n = 19)
+```
+
+Lights out
+```{r}
+lights_out(
+width = 5,
+height = 5,
+steps = 3,
+cheat = FALSE,
+col.off = "black",
+col.on = "white",
+col.frame = "lightblue",
+seed = NULL
+)
+```
+

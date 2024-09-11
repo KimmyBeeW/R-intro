@@ -1,0 +1,120 @@
+---
+title: "HW 3: Mortgage Rates"
+author: Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+library(tidyverse)
+library(scales)
+```
+
+## Mortgage Rates over time
+
+Housing is often a barometer for how people feel about the economy. Interest rates for mortgages are also the lowest of the interest rates for other personal borrowing.
+
+Freddie Mac, a publicly traded government-sponsored enterprise focused on providing an affordable supply of mortgages across the US, shares the weekly average 30-year mortgage rate. The average is over applications that week.
+
+**Import:**
+
+```{r}
+rate <- read_csv("https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US")
+
+# choose a better column name than FRED id
+rate <- rate |>
+  rename(Mortgage = MORTGAGE30US)
+
+# look at data
+tail(rate, 12)
+```
+
+**Visualize:**
+
+1.  Make a time series plot of mortgage rates. The vertical axis should show `%` using `label_percent()` from the `scales` package.
+
+```{r}
+ggplot(rate, aes(x = DATE, y = Mortgage)) +
+    geom_line() +
+    labs(
+      x = "Year", y = "Mortgage Rate",
+      title = "Mortgage Rates over Time",
+      caption = "FRED"
+    ) +
+    scale_y_continuous(labels = label_percent(scale = 1)) +
+    scale_x_date() 
+```
+
+2.  Make a time series plot of mortgage rates from the date you started high school to now.
+
+```{r}
+rate |>
+  na.omit() |>
+  ggplot(aes(x = DATE, y = Mortgage)) +
+      geom_line() +
+      labs(
+        x = "Year", y = "Mortgage Rates",
+        title = "Mortgage Rates over Time Since Kimmy Started High School 08/2017",
+        caption = "FRED"
+      ) +
+      scale_y_continuous(labels = label_percent(scale = 1)) +
+      scale_x_date(limits = c(today() - months(73), today()))
+
+```
+
+**Communicate:**
+
+Prompt: What should someone know about the current mortgage rate compared to when you started high school?
+
+I was at High School from the Fall of 2017 to the Spring of 2020, and as you can see from the graph, the mortgage rate was pretty consistently somewhere between 3.5-5%. During the pandemic it dipped really low to about 2.5%, but as the pandemic has slowly been shaken off, the mortgage rates are sporadically, but definitely, increasing. It hasn't been below 5% since the middle of 2022, and it just keeps getting higher, sitting around 7% right now. This could be an indicator that the housing market is about to crash, but it definitely indicates that most of my graduating class relying on a mortgage likely won't be able to afford a house anytime soon.
+
+## Stretch Exercise:
+
+Create a time series plot of mortgage rates since 2000. Add vertical lines to identify the election day of each US President and annotate the President's name.
+
+```{r}
+rate |>
+  na.omit() |>
+  ggplot(aes(x = DATE, y = Mortgage)) +
+      geom_line() +
+      labs(
+        x = "Year", y = "Mortgage Rate",
+        title = "Mortgage Rates over Time",
+        subtitle = "with Presidential Election Days as time markers",
+        caption = "FRED"
+      ) +
+      scale_y_continuous(labels = label_percent(scale = 1)) +
+      scale_x_date(limits = c(today() - months(285), today()))+
+      geom_vline(xintercept = mdy("Nov 7, 2000"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 7, 2000"), y = 13,
+        label = "George W. Bush") +
+      geom_vline(xintercept = mdy("Nov 2, 2004"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 2, 2004"), y = 11,
+        label = "George W. Bush") +
+      geom_vline(xintercept = mdy("Nov 4, 2008"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 4, 2008"), y = 9,
+        label = "Barak Obama") +
+      geom_vline(xintercept = mdy("Nov 6, 2012"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 6, 2012"), y = 13,
+        label = "Barak Obama") +
+      geom_vline(xintercept = mdy("Nov 8, 2016"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 8, 2016"), y = 11,
+        label = "Donald Trump") +
+      geom_vline(xintercept = mdy("Nov 3, 2020"), linetype="dotted") +
+      annotate(
+        geom = "label", x = mdy("Nov 3, 2020"), y = 9,
+        label = "Joe Biden") +
+    theme_minimal()
+    
+```
+
+This graph is really funny because mortgage rates are kind of all over the place, but for the most part they seem to be going down under President Bush, President Obama, and President Trump, indicating that party isn't a huge factor in whether the mortgage rates change... Unless you're President Biden. Mortgage rates jumped from the lowest they've been in 20 years to nearly the highest they've been. Probably a good sign that if the president impacts the economy we should try getting a new president next election.

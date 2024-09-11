@@ -1,0 +1,229 @@
+##Transform / Feature Engineering: Character / String Data
+
+Recap of last lecture
+  Dividing a dataset into groups and performing computations on group chunks
+  summarize and group_by / .by
+
+Outline
+  - Character / String Data
+  - Tallies
+  - Queries
+  
+## Seattle Pet Names
+Data: Seattle Pet Registry
+#Import
+```{r}
+library(tidyverse)
+
+pets <- read_csv("https://data.seattle.gov/api/views/jguv-t9rb/rows.csv?accessType=DOWNLOAD")
+```
+
+#Tidy
+```{r}
+tail(pets)
+```
+See the ' in "Animal's names"? We could use that, but it would be easier without them.
+
+#Transform
+```{r}
+library(janitor)
+pets <- pets |>
+  clean_names()
+
+pets
+```
+We can do a little better
+```{r}
+pets <- pets |>
+  rename(name = animals_name,
+         license = license_number)      
+```
+
+Change license date from character
+```{r}
+pets <- pets |>
+  mutate(date = mdy(license_issue_date)) |>
+  select(-license_issue_date) 
+pets
+```
+
+#Visualize
+```{r}
+ggplot(pets, aes(x = species)) +
+  geom_bar()
+```
+
+if we wanted the table:
+baseR
+```{r}
+table(pets$species)
+```
+tidyverse
+```{r}
+pets |>
+  group_by(species) |>
+  count()
+```
+
+Visualize --> Seattle Pet Trends: Names
+Code aloud:
+  - Use only 2023 rows
+  - Divide into name groups
+  - Count how many times each name occurs
+  - Sort largest counts first
+  - Print Top 10
+```{r}
+pets |>
+  filter(year(date) == 2023) |>
+  group_by(name) |>
+  count() |>
+  arrange(desc(n)) |>
+  head(n = 10)
+```
+
+Visualize --> Seattle Pet Trends: Type
+Code Aloud:
+  - Use only 2023 rows
+  - Divide into primary_breed and species groups
+  - Count how many times each group occurs
+  - Sort largest counts first
+  - Print Top 10
+```{r}
+pets |>
+  filter(year(date) == 2023) |>
+  group_by(primary_breed, species) |>
+  count() |>
+  arrange(desc(n)) |>
+  head(n = 10)
+```
+
+
+Queries of a Database
+This is Meeko! ૮ ˆﻌˆ ა
+Are there any other Meekos in Seattle?
+```{r}
+pets |>
+  filter(name == "Meeko")
+```
+Similar Sounding or Different Spelling
+```{r}
+pets |>
+  filter(name %in% c("Meeko", "Miko", "Mico", "Neeko", "Niko", "Nico")) 
+```
+Just one of their names
+```{r}
+pets |>
+  filter(str_detect(name, "Meeko")) 
+```
+
+
+
+#Queries of a Database: What is the longest name? Count characters
+step 1: How long are names?
+```{r}
+pets |>
+  count(length = str_length(name)) |>
+  arrange(desc(length))
+```
+step 2: Find the long ones.
+```{r}
+pets |>
+  mutate(length = str_length(name)) |>
+  filter(length >= 40) |>
+  arrange(desc(length))
+```
+step 3: table
+```{r}
+pets |>
+  mutate(length = str_length(name)) |>
+  filter(length >= 40) |>
+  arrange(desc(length)) |>
+  pull(name, length)
+```
+
+
+
+#Queries of a Database: What is the longest name? Count Words (separated by spaces)
+step 1: First, how long are names?
+Note: One word names will have no spaces, so word count is 1 + space count
+```{r}
+pets |>
+  count(words = 1 + str_count(name, " ")) |>
+  arrange(desc(words)) 
+```
+step 2: Second, find the large ones
+```{r}
+pets |>
+  mutate(words = 1 + str_count(name, " ")) |>
+  arrange(desc(words)) |>
+  filter(words >= 6) 
+```
+step 3: table
+```{r}
+pets |>
+  mutate(words = 1 + str_count(name, " ")) |>
+  arrange(desc(words)) |>
+  filter(words >= 6) |>
+  pull(name, words)
+```
+
+
+
+#Transform: Count the number of vowels and consonants in names
+```{r}
+pets |>
+  count(name) |>
+  mutate(
+    vowels = str_count(name, "[aeiou]"),
+    consonants = str_count(name, "[^aeiou]")
+  )    
+```
+
+Why isn’t the counting quite right?
+"\"Zippy\"" should count 4 consonants
+"'Alani" should count 3 vowels (counted A as a consonant!)
+Consonant counted NOT aeiou
+Vowel didn’t count UPPERCASE
+
+Lots of ways to solve this
+```{r}
+pets |>
+  count(name) |>
+  mutate(
+    vowels = str_count(str_to_lower(name), "[aeiou]"),
+    consonants = str_count(str_to_lower(name), "[b-df-hj-np-tv-z]")
+  )    
+```
+```{r}
+pets |>
+  count(name) |>
+  mutate(
+    vowels = str_count(name, regex("[aeiou]", ignore_case = TRUE)),
+    consonants = str_count(name, regex("[b-df-hj-np-tv-z]", ignore_case = TRUE))
+  )    
+```
+
+#Transform: Remove the rare characters from name
+```{r}
+pets |>
+  count(name) |>
+  mutate(
+    name1 = str_remove_all(name, "[ \"'().-]")
+  )    
+```
+Notice the " is confusing to the code so we escape it \" to mean literally "
+```{r}
+pets |>
+  count(name) |>
+  mutate(
+    name1 = str_remove_all(name, regex("[^a-z0-9]", ignore_case = TRUE))
+  )    
+```
+
+
+#Lecture Review
+  - Character / String Data
+  - Tallies
+  - Queries
+
+

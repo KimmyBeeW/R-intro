@@ -1,0 +1,348 @@
+---
+title: "Income Distribution by Country Compared to Scholastic Scores"
+author: Brooke Seeley, Kimberly Williams
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+# Import
+
+## Attaching Packages
+
+```{r}
+#| label: load-packages
+#| include: false
+library(tidyverse)
+```
+
+This is how we combined our data, but you can skip to where we load in FullData.csv in order to see the graphs. We wanted to use both datasets to see the correlation between economic equality and scholastic performance.
+
+## Income Distribution Dataset
+
+```{r}
+Income_Distribution1 <- read_csv("Income_Distribution_Database.csv",
+                         col_types = cols_only(Country = col_factor(),
+                                               MEASURE = col_factor(),
+                                               AGE = col_factor(),
+                                               Methodology = col_factor(),
+                                               Year = col_number(),
+                                               Value = col_number()))
+head(Income_Distribution1)
+```
+
+## Country Scores Dataset
+
+```{r}
+Country_Database <- read_csv("Country_Scores.csv",
+                           col_types = cols_only(Country = col_factor(),
+                                               Sex = col_factor(),
+                                               Indicator = col_factor(),
+                                               Year = col_number(),
+                                               Value = col_number()))
+head(Country_Database)
+```
+
+# Tidy/Transform
+
+## Pivot Out Indicators
+
+```{r}
+Country_pivot <- Country_Database %>%
+  pivot_wider(names_from = Indicator, values_from = Value)
+
+
+head(Country_pivot)
+```
+
+## Select Columns
+
+```{r}
+Country_Scores <- Country_pivot |>
+  select(Country, Sex, Year, 'Country mean average score in reading, by sex', 'Country mean average score in mathematics, by sex', 'Country mean average score in science, by sex', 'Proportion (%) of the population aged 15-19 neither employed nor in education or training') |>
+  rename(
+    reading = 'Country mean average score in reading, by sex',
+    mathematics = 'Country mean average score in mathematics, by sex',
+    science = 'Country mean average score in science, by sex',
+    unemployed_and_not_in_school_15_19 = 'Proportion (%) of the population aged 15-19 neither employed nor in education or training'
+    )
+
+
+head(Country_Scores)
+```
+
+## Filter and Select Columns
+
+```{r}
+Income_Distribution2 <- filter(Income_Distribution1, MEASURE == "GINI", AGE == "TOT")
+colnames(Income_Distribution2)[colnames(Income_Distribution2) == 'Value'] <- 'Gini'
+Income_Distribution3 <- select(Income_Distribution2, Country, Methodology, Year, Gini)
+
+
+head(Income_Distribution3)
+```
+
+## Pivot the Two Gini Methodologies
+
+```{r}
+Income_Distribution4 <- Income_Distribution3 %>%
+  pivot_wider(names_from = Methodology, values_from = Gini)
+```
+
+## Coalesce the Gini Scores
+
+### Fill in all NA entries for each year to build a single column, giving preference to the newer Gini methodology.
+
+```{r}
+Income_Distribution5 <- Income_Distribution4 |>
+  rename(Gini12 = 'New income definition since 2012') |>
+  rename(Gini11 = 'Income definition until 2011') |>
+  mutate(Gini = coalesce(Gini12, Gini11)) |>
+  select(Country, Year, Gini)
+head(Income_Distribution5)
+```
+
+## Join the Two Datasets
+
+```{r}
+FullData <- inner_join(Country_Scores, Income_Distribution5)
+
+
+head(FullData)
+```
+
+```{r}
+write_csv(FullData, "FullData.csv")
+```
+
+## Import (for real this time)
+
+```{r}
+FullData <- read_csv("FullData.csv")
+NAData <- FullData |>
+  na.omit()
+
+
+head(FullData)
+head(NAData)
+```
+
+# Visualize
+
+## Country-Gini Time Series
+
+### Build dataset with just countries that have data from 1990 to present
+
+```{r}
+time1990 <- FullData |>
+  select(Country, Year, Gini) |>
+
+
+  filter(Country %in%  c("Finland", "Canada", "United Kingdom", "Germany", "Israel", "Denmark", "Netherlands", "New Zealand"))
+head(time1990)
+```
+
+### Graph
+
+```{r}
+ggplot(time1990, aes(x = Year, y = Gini, color = Country)) +
+    geom_line() +
+    labs(
+      x = "Year", y = "Gini Index Value",
+      title = "Gini Index Over Time",
+      subtitle = "(in countries with data from 1990 to present)"
+    ) +
+    scale_y_continuous() +
+    theme_minimal()
+```
+
+## Sex-Scores Boxplots
+
+### Reading
+
+```{r}
+ggplot(NAData, aes(x=Sex, y=reading))+
+  geom_boxplot() +
+  labs( 
+    x = "Sex", 
+    y = "Reading Scores",
+    title = "Sex and Reading Scores",)
+```
+
+### Math
+
+```{r}
+ggplot(NAData, aes(x=Sex, y=mathematics))+
+  geom_boxplot() +
+  labs( 
+    x = "Sex", 
+    y = "Math Scores",
+    title = "Sex and Math Scores",)
+```
+
+### Science
+
+```{r}
+ggplot(NAData, aes(x=Sex, y=science))+
+  geom_boxplot() +
+  labs( 
+    x = "Sex", 
+    y = "Science Scores",
+    title = "Sex and Science Scores",)
+```
+
+### Unemployed/No School
+
+```{r}
+ggplot(NAData, aes(x=Sex, y=unemployed_and_not_in_school_15_19))+
+  geom_boxplot() +
+  labs( 
+    x = "Sex", 
+    y = "Unemployment and Not In School Rates Ages 15-19",
+    title = "Sex and Unemployed/Not In School Rates",)
+```
+
+## Gini-Scores Correlation Graphs
+
+### Correlation Coefficients
+
+#### Reading
+
+```{r}
+cor(NAData$Gini, NAData$reading)
+```
+
+#### Math
+
+```{r}
+cor(NAData$Gini, NAData$mathematics)
+```
+
+#### Science
+
+```{r}
+cor(NAData$Gini, NAData$science)
+```
+
+#### Unemployed/Not In School
+
+```{r}
+cor(NAData$Gini, NAData$unemployed_and_not_in_school_15_19)
+```
+
+### Graphs
+
+#### Reading
+
+```{r}
+ggplot(NAData,
+       aes(x = Gini, 
+           y = reading,
+           color = Sex)) + 
+  geom_point() +
+  labs( 
+    x = "Gini Index", 
+    y = "Reading Scores",
+    color = "Sex",
+    title = "Gini Index and Reading Scores",
+    subtitle = "r = -0.41",
+  ) +
+  scale_color_manual(values = c("darkblue", "deeppink"))
+```
+
+#### Math
+
+```{r}
+ggplot(NAData,
+       aes(x = Gini, 
+           y = mathematics,
+           color = Sex)) + 
+  geom_point() +
+  labs( 
+    x = "Gini Index", 
+    y = "Math Scores",
+    color = "Sex",
+    title = "Gini Index and Math Scores",
+    subtitle = "r = -0.72",
+  ) +
+  scale_color_manual(values = c("darkblue", "deeppink"))
+```
+
+#### Science
+
+```{r}
+ggplot(NAData,
+       aes(x = Gini, 
+           y = science,
+           color = Sex)) + 
+  geom_point() +
+  labs( 
+    x = "Gini Index", 
+    y = "Science Scores",
+    color = "Sex",
+    title = "Gini Index and Science Scores",
+    subtitle = "r = -0.54",
+  ) +
+  scale_color_manual(values = c("darkblue", "deeppink"))
+```
+
+#### Unemployed/Not In School
+
+```{r}
+ggplot(NAData,
+       aes(x = Gini, 
+           y = unemployed_and_not_in_school_15_19,
+           color = Sex)) + 
+  geom_point() +
+  labs( 
+    x = "Gini Index", 
+    y = "Unemployment and Not In School Rates Ages 15-19",
+    color = "Sex",
+    title = "Gini Index and Unemployed/Not In School Rates",
+    subtitle = "r = 0.66"
+  ) +
+  scale_color_manual(values = c("darkblue", "deeppink"))
+```
+
+# Model
+
+## We will be creating multiple linear models to represent how the Gini Index affects different countries' scholastic scores and unemployment/not in school percentages.
+
+## Reading
+
+```{r}
+lmReading = lm(reading~Gini, data = NAData)
+summary(lmReading)
+```
+
+## Math
+
+```{r}
+lmMath = lm(mathematics~Gini, data = NAData)
+summary(lmMath)
+```
+
+## Science
+
+```{r}
+lmScience = lm(science~Gini, data = NAData)
+summary(lmScience)
+```
+
+## Unemployed/Not in School
+
+```{r}
+lmUnNot = lm(unemployed_and_not_in_school_15_19~Gini, data = NAData)
+summary(lmUnNot)
+```
+
+# Communicate
+
+This project analyzed how income inequality impacts a country's students. Minors have very little choice about where they live and how they are educated, so it is their parents or their society's responsibility to provide a good education. The Gini Index is a statistical measure of economic inequality. It measures how income or consumption is distributed among individuals or households within an economy. A score of 0 represents perfect income equality, while a score of 1 represents perfect income inequality. To see if there was a correlation between economic inequality and academic success we compared the Gini Index to a few academic indicators, namely: reading scores, math scores, science scores, and the rate of those unemployed and not in school in the 15-19 age group. We also included the comparison of scores between males and females as gender equality is also a good indicator of quality of life.
+
+Using boxplots, we compared the sex of students and their different scores. With the reading scores, the female students performed better on average than the male students, with the female median score being approximately 40 points above the male median score. In math and science, the two groups performed similarly, but the male students performed slightly better than female students on average. In math, they performed around 10 points better, and in science, they performed only a few points better. The female students performing much better in reading but slightly worse in math and science than male students can be an example of the subjects female students are focused on in different countries, such as a lack of focus in STEM subjects.
+
+As shown in the scatter plots, there was a clear negative correlation between the Gini Index and the scores, and a clear positive correlation between the Gini Index and unemployment and out of school rates. From this, we can see that the more equal the income of a country is, the better the students and student-aged people do scholastically, and vocationally. This is especially evident in the Mathematics scores, shown by a correlation coefficient of -0.71, and the unemployed and not in school rate, shown by a correlation coefficient of 0.66. We created linear models for each of the scores as explained by the Gini Index and found by the p-values that Gini is an effective predictor for the scores. Just as with the correlation coefficients, the R-squared values for Mathematics scores and Unemployed and not in school rate showed that 50% and 44% of the variation in those variables can be explained by the Gini Index, respectively. The correlation coefficients and R-squared values are not nearly as strong for the Reading and Science scores, so it is a bit tougher to make conclusions there.
+
+This data is important because if a society wants to fix its academic problems as a whole, a potential solution is to improve the income equality of the country. Parents can also use this data to decide on a place to live, since academic scores and income equality relate to quality of life. It also shows that many societal problems are interrelated, and that if we solve one problem it can often solve or affect another. That being said, correlation does not prove causation, but it does indicate that there is a relationship. It is likely that improving academics can improve a country's income equality, and conversely, improving a country's income equality can improve academics.

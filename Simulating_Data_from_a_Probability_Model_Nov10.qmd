@@ -1,0 +1,257 @@
+Simulating Data from a Probability Model
+
+Recap of last lecture
+  Simulation (Computing Random Variables)
+  Approximating P(A)
+  Approximating E(Y)
+  
+```{r}
+library(tidyverse)
+```
+
+
+Outline
+  Simulating Data from a Probability Model
+  Intro to Statistical Research using Simulation Studies
+  
+Connecting Probability Models with Data
+  Assume data is normally distributed
+  Y1, Y2, Y3, ..., Yn are a sample from a N(μ, σ) distribution
+  If we were to get “another sample” what would it look like?
+
+Normally Distributed Data
+```{r}
+rnorm(n, mean, sd)
+```
+
+Other “Named” Distributions
+```{r}
+simdata_Bern <- rbinom(n = 40, size = 1, p = 0.8)
+head(simdata_Bern, 15)
+```
+```{r}
+simdata_Binom <- rbinom(n = 40, size = 12, p = 0.6)
+head(simdata_Binom, 15)
+```
+```{r}
+simdata_Exp <- rexp(n = 40, rate = 4.5)
+head(simdata_Exp, 4)
+```
+Other “Named” Distributions
+  Poisson
+  Uniform
+  Gamma
+  Lognormal
+
+phi --> (symbol: φ) a measure of association for two dichotomous or binary random variables. The phi coefficient is the product-moment correlation coefficient when both variables are coded (0, 1).
+
+AR(1) Model
+  Yt = φYt-1 + εt, εt ~ N(0, σ_ε) i= 2,..., n
+  with Y1 ~ N(μ, σ_ε/sqrt(1-φ^2)) where |φ| < 1 and σ_ε > 0
+  
+When ∅ is close to one there is high correlation between successive observations (we’ll see “smoothness”)
+
+Pseudo Code
+```{r}
+Assign values for n, phi, sigma_epsilon
+
+Create simdata_AR1, an empty vector of length n
+
+for(i in 1 : n){
+  
+  if FirstObs then 
+    generate N(0, sigma_epsilon / sqrt(1 - phi^2))
+    save value in simdata_AR1[1]
+  
+  for all other observations
+    generate epsilon from N(0, sigma_epsilon)
+    compute Yt = phi * Y_{t-1} + epsilon 
+    save value in simdata_AR1[i]
+  
+}
+```
+
+Sample of n = 100 from an AR(1) with φ = 0.9 and σ_ε = 1
+```{r}
+n <- 100
+phi <- 0.9
+sigma_epsilon <- 1
+
+simdata_AR1 <- rep(0, n)
+
+for(i in 1 : n){
+  if(i == 1){
+    simdata_AR1[1] <- rnorm(1, mean = 0, sd = sigma_epsilon / sqrt(1 - phi^2))
+  } else{
+    simdata_AR1[i] <- phi * simdata_AR1[i - 1] + rnorm(1, mean = 0, sd = sigma_epsilon)
+  }
+}
+```
+
+
+Data Modelling
+  Given data that has certain features, what is the probability model?
+  Time to Finish Watching a Show
+  
+Zero-Inflated Poisson
+  Y = Time to Finish Watching has two types of Viewers
+
+  Xi ~ Bernoulli(p)
+    Xi = 1 --> Yi = 0
+    Xi = 0 --> Yi ~ Poisson(λ)
+
+  Binge Racers (watch all episodes in one day)
+    P(Binge Racer) = 0.15
+    P(Binge Watcher) = 0.85
+  Binge Watchers ~ Poisson(2.2)
+
+Zero-Inflated Poisson
+Y = Time to Finish Watching
+
+Pseudo Code: Loop
+```{r}
+Assign values for n, p, lambda
+
+Create simdata_ZIPois, an empty vector of length n
+
+for(i in 1 : n){
+
+  generate X from Bernoulli(p) 
+    
+  if X is 1 (meaning it's a Binge Racer)
+    simdata_ZIPois[i] = 0
+
+  else (meaning it's a Binge Watcher)
+    generate Y from Poisson(lambda)
+    save value in simdata_ZIPois[i]
+  
+}
+```
+
+Code: Loop
+Sample of n = 100 from a Zero-Inflated Poisson with p = 0.2 and λ = 2.5
+```{r}
+n <- 200
+p <- 0.15
+lambda <- 2.2
+
+simdata_ZIPois <- rep(0, n)
+
+for(i in 1 : n){
+  x <- rbinom(1, size = 1, prob = p)
+  if(x == 1){
+    simdata_ZIPois[i] <- 0
+  } else{
+    simdata_ZIPois[i] <- rpois(1, lambda = lambda)
+  }
+}
+```
+
+
+Pseudo Code: Vectorized
+```{r}
+Assign values for n, p, lambda
+
+generate n values of X from Bernoulli(p) 
+
+generate n values of Y from Poisson(lambda)
+
+Create simdata_ZIPois using ifelse
+  if Xi is 1 (meaning it's a Binge Racer) then 0
+  if Xi is 0 (meaning it's a Binge Watcher) then Y
+```
+
+Code: Vectorized
+Sample of n = 200 from a Zero-Inflated Poisson with p = 0.2 and lambda = 2.5
+```{r}
+n <- 200
+p <- 0.15
+lambda <- 2.2
+
+x <- rbinom(n, size = 1, prob = p)
+head(x, 15)
+```
+```{r}
+y <- rpois(n, lambda = lambda)
+head(y, 15)
+```
+```{r}
+simdata_ZIPois <- ifelse(x == 1, 0, y)
+head(simdata_ZIPois, 15)
+```
+
+
+
+Data Modelling
+  Given data that has certain features, what is the probability model?
+  Yelp Review Summary
+
+Latent Variable for Ordinal Data
+  Y = Number of Stars in Review
+  Latent (Unobserved) Measurement ~ Normal(4.7, 0.6)
+  Ordinal Discretized Measurement
+Latent Variable for Ordinal Data
+  Y = Number of Stars in Review
+  
+Pseudo code: Vectorized
+```{r}
+Assign values for n, mu, sigma_epsilon
+
+generate n values of X from N(mu, sigma)
+
+Create simdata_DiscNorm by rounding to 1, 2, 3, 4, 5
+  note: trim Xi values to 1 and 5
+```
+
+Code: Vectorized
+Sample of n = 930 from Ordinal Data Model from N(4.7, 0.6)
+```{r}
+n <- 930
+mu <- 4.7
+sigma <- 0.6
+
+x <- rnorm(n, mean = mu, sd = sigma)
+head(x, 15)
+```
+```{r}
+simdata_DiscNorm <- round(x)
+simdata_DiscNorm <- ifelse(simdata_DiscNorm < 1, 1, simdata_DiscNorm)
+simdata_DiscNorm <- ifelse(simdata_DiscNorm > 5, 5, simdata_DiscNorm)
+
+head(simdata_DiscNorm, 15)
+```
+
+
+Intro to Statistical Research using Simulation Studies
+  How large n to identify normality from histogram?
+  Thinking:
+    generate a sample from N(0, 1)
+    create histogram
+  Note: start with small n and increase until reliably normal
+
+
+Sample Size Needed to Identify Normal from Histogram
+```{r}
+IsItNormal <- function(n){
+  # generate data we know are normal
+  # note: N(0, 1) WLOG
+  simdata_Normal <- rnorm(n, mean = 0, sd = 1)
+  # visualize with histogram
+  simdata <- data.frame(simdata_Normal = simdata_Normal)
+  ggplot(simdata, aes(x = simdata_Normal)) +
+    geom_histogram(aes(y = after_stat(density))) +
+    stat_function(fun = dnorm,
+                  args = list(mean = mean(simdata$simdata_Normal),
+                              sd = sd(simdata$simdata_Normal)),
+                  col = "royalblue") +
+    labs(x = "Y")
+}
+```
+```{r}
+IsItNormal(n = 30000)
+```
+
+Lecture Review
+  Simulating Data from a Probability Model
+  Intro to Statistical Research using Simulation Studies
+

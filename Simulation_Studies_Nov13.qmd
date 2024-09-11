@@ -1,0 +1,189 @@
+Simulation Studies
+
+Recap of last lecture
+  Simulating Data from a Probability Model
+
+Outline
+  Simulation Study Examples:
+    Normal Goodness of Fit Tests
+    Mini-Project: Simulation Study
+
+Assessing Normality
+  Experience looking at histograms / boxplots / density plots
+  Using GOF tests
+    Shapiro-Wilk Test
+    K-S test can be more generally applied
+    
+Applying Normal Goodness of Fit Test
+Define Ho: Normal
+  Normal(mu, sigma)
+    f(y) = 1/(sigma*sqrt(2π)) * exp[(y-mu)^2 / -2sigma^2]
+  Features: continuous, symmetric, 68% within mu ± sigma, 99.7% within mu ± 3sigma
+Define Ha: Not Normal
+  At least one Feature that make the distribution non-normal
+  Test statistic looks for difference in features (skewed, discrete, multimodal, heavy/long tails, etc)
+  Note: Won’t know what the non-normal distribution is!
+  Poisson(lambda = 5)
+
+Shapiro-Wilk test
+  Definition of P(Type 1 Error)
+  Probability of Rejecting Ho when Ho is true
+  Probability of declaring data as non-normal given data is from a normal
+  Simulation to Approximate P(Type 1 Error)
+Pseudo Code
+```{r}
+Assign value for n
+
+Create SW_Type1, an empty vector of length Nsim
+
+for(i in 1 : Nsim){
+  
+  generate n observations from N(0, 1)
+  
+  compute Shapiro-Wilk Test
+
+  save p-value in SW_Type1[i]
+  
+}
+
+Compute the proportion of SW p-values < 0.05
+```
+
+Shapiro-Wilk test
+Definition of Power
+  Probability of Rejecting Ho when Ha is true
+  Probability of declaring data as non-normal when it is from a non-normal distribution
+Note: Need to choose a specific non-normal distribution and be clear on all details
+More precise to say “Probability of declaring data as non-normal when it is Poisson(5) with n = 15”
+
+Simulation to Approximate Power
+Pseudo Code for Ha: Poisson(5)
+```{r}
+Assign value for n
+
+Create SW_Power, an empty vector of length Nsim
+
+for(i in 1 : Nsim){
+  
+  generate n observations from Poisson(5)
+  
+  compute Shapiro-Wilk Test
+
+  save p-value in SW_Power[i]
+  
+}
+
+Compute the proportion of SW p-values < 0.05
+```
+Note: why is N(0,1) WLOG but Poisson(5) is not? because S-W test adjusts for location-scale (mean - variance), but it does not adjust for shape
+
+Code for approx P(Type I error)
+```{r}
+n <- 15
+
+Nsim <- 10^5
+
+pvals <- rep(0, Nsim)
+
+for(i in 1 : Nsim){
+  y <- rnorm(n)
+  out <- shapiro.test(y)
+  
+  pvals[i] <- out$p.value
+  
+}
+
+mean(pvals < 0.05)
+```
+
+Code for approx Power
+```{r}
+n <- 15
+
+Nsim <- 10^5
+
+pvals <- rep(0, Nsim)
+
+for(i in 1 : Nsim){
+  y <- rpois(n, lambda = 5)
+  out <- shapiro.test(y)
+  
+  pvals[i] <- out$p.value
+  
+}
+
+mean(pvals < 0.05)
+```
+
+You may think about other power calculations that are interesting
+Sample Size: n = 10, 15, 30, 50, 100
+Non-Normal Distributions: Poisson(lambda): lambda = 20, 10, 5 (as lambda increases the Poisson can be approximated by a normal)
+Don’t those look like factors / levels from a designed experiment?
+
+Approx P(Type 1 Error)
+```{r}
+SWtest_Type1Error <- function(n, Nsim = 10^5){
+  pvals <- rep(0, Nsim)
+
+  for(i in 1 : Nsim){
+    y <- rnorm(n)
+    out <- shapiro.test(y)
+  
+    pvals[i] <- out$p.value
+  }
+  mean(pvals < 0.05)
+}
+```
+```{r}
+SWtest_Type1Error(n = 10)
+```
+
+Approx Power (Poisson)
+```{r}
+SWtest_Power <- function(n, lambda, Nsim = 10^5){
+  pvals <- rep(0, Nsim)
+
+  for(i in 1 : Nsim){
+    y <- rpois(n, lambda)
+    out <- shapiro.test(y)
+  
+    pvals[i] <- out$p.value
+  }
+  mean(pvals < 0.05)
+}
+```
+```{r}
+SWtest_Power(n = 10, lambda = 5)
+```
+
+Power of Shapiro-Wilk test
+  Results:
+  Prompt: How well do Normal Goodness of Fit tests work?
+  Prompt: How dramatic does the non-normal distribution need to be for the test to detect normality?
+  Prompt: How large a sample is needed?
+
+Lecture Review
+  Simulation study Examples
+    Normal Goodness of Fit Tests
+Appendix:
+  Extracting results (returned values) from R functions
+
+
+Appendix
+Extracting results (returned values) from R functions
+```{r}
+y <- rpois(15, lambda = 5)
+  
+out <- shapiro.test(y)
+
+out
+```
+```{r}
+names(out)
+```
+```{r}
+out$p.value
+```
+```{r}
+shapiro.test
+```
